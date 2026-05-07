@@ -1,0 +1,17 @@
+{
+  "name": "opentui-diagrams-examples",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "flowchart": "bun src/flowchart-demo.ts",
+    "state": "bun src/state-diagram-demo.ts",
+    "sequence": "bun src/sequence-diagram-demo.ts",
+    "print:flowchart": "bun src/flowchart-demo.ts --print --plain",
+    "print:state": "bun src/state-diagram-demo.ts --print --plain",
+    "print:sequence": "bun src/sequence-diagram-demo.ts --print --plain"
+  },
+  "dependencies": {
+    "@opentui/core": "0.2.2",
+    "opentui-diagrams": "file:.."
+  }
+}
