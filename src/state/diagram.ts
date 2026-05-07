@@ -1,6 +1,5 @@
-import { BorderChars, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type RGBA, type StyledText, TextBufferRenderable } from "@opentui/core"
+import { BorderChars, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type RGBA, TextBufferRenderable } from "@opentui/core"
 import { DiagramCanvas, type DiagramCanvasCell } from "../core/canvas.js"
-import type { DiagramCanvasRunOptions } from "../core/canvas.js"
 import {
   diagramColorMapsEqual,
   diagramRadialCellColorLevel,
@@ -25,23 +24,25 @@ import {
   type StateDiagramBoxBounds as BoxBounds,
   type StateDiagramNoteBounds as StateNoteBounds,
 } from "./layout.js"
-import { renderDiagramGridAnsi, renderDiagramGridStyledText } from "../core/render-grid.js"
 import { diagramTextWidth } from "../core/text.js"
 import { normalizeStateDiagramEndpoint } from "./endpoint.js"
 import { parseMermaidStateDiagram } from "./parser.js"
 import {
+  renderStateGridAnsi,
+  renderStateGridStyledText,
+  renderStateGridText,
+  type StateCellMetadata,
+  type StateGrid,
+} from "./render-grid.js"
+import {
   isStateActiveTransitionStyle,
   isStateTransitionFadeStyle,
   resolveStateStyleColors,
-  resolveStateAnsiTheme,
   STATE_ACTIVE_TRANSITION_PULSE_STYLES,
   stateActiveTransitionPulseStyleLevel,
   stateDiagramStateColorKey,
   stateInactiveTransitionStyle,
-  stateStyleBgColor,
-  stateStyleColor,
   stateTransitionFadeStyle,
-  type StateStyleColors,
 } from "./style.js"
 import type {
   FadeSourceStyle,
@@ -84,13 +85,7 @@ interface StateDiagramRenderTransition extends StateDiagramTransition {
   sourceTransitions?: readonly StateDiagramTransition[]
 }
 
-interface StateCellMetadata {
-  stateId?: string
-  bgStateId?: string
-}
-
 type StateCell = DiagramCanvasCell<StateCellStyle, StateCellMetadata>
-type StateGrid = DiagramCanvas<StateCellStyle, StateCellMetadata>
 
 type StatePathPoint = readonly [number, number]
 
@@ -1113,40 +1108,12 @@ function layoutStateDiagram(content: string, options: StateDiagramRenderOptions 
   return grid
 }
 
-function renderGridText(grid: StateGrid): string {
-  return grid.toString({ trimBottom: true })
-}
-
-function renderGridStyledText(
-  grid: StateGrid,
-  colors: StateStyleColors,
-  stateColors?: ReadonlyMap<string, RGBA>,
-  stateBgColors?: ReadonlyMap<string, RGBA>,
-): StyledText {
-  const useStateRuns = Boolean(stateColors?.size || stateBgColors?.size)
-  const runOptions: DiagramCanvasRunOptions<StateCellStyle, StateCellMetadata> | undefined = useStateRuns
-    ? { key: (cell) => [cell.style, cell.stateId, cell.bgStateId] }
-    : undefined
-
-  return renderDiagramGridStyledText(
-    grid,
-    (run) => stateStyleColor(run.style, colors, stateColors, useStateRuns ? run.cell.stateId : undefined),
-    (run) => stateStyleBgColor(stateBgColors, useStateRuns ? run.cell.bgStateId : undefined),
-    runOptions,
-  )
-}
-
-function renderGridAnsi(grid: StateGrid, theme: StateDiagramAnsiTheme = {}): string {
-  const resolved = resolveStateAnsiTheme(theme)
-  return renderDiagramGridAnsi(grid, (run) => (run.style ? resolved[run.style] : undefined), { trimBottom: true })
-}
-
 export function renderStateDiagram(content: string, options: StateDiagramRenderOptions = {}): string {
-  return renderGridText(layoutStateDiagram(content, options))
+  return renderStateGridText(layoutStateDiagram(content, options))
 }
 
 export function renderStateDiagramAnsi(content: string, options: StateDiagramAnsiOptions = {}): string {
-  return renderGridAnsi(layoutStateDiagram(content, options), options.theme)
+  return renderStateGridAnsi(layoutStateDiagram(content, options), options.theme)
 }
 
 export class StateDiagramRenderable extends TextBufferRenderable {
@@ -1467,7 +1434,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
       pulseGap: this._pulseGap,
     })
     this.textBuffer.setStyledText(
-      renderGridStyledText(
+      renderStateGridStyledText(
         grid,
         resolveStateStyleColors({
           state: this._stateColor,
