@@ -38,9 +38,10 @@ import {
   type StateDiagramBoxBounds as BoxBounds,
   type StateDiagramNoteBounds as StateNoteBounds,
 } from "./layout.js"
-import { firstMeaningfulMermaidLine, mermaidLines } from "../core/mermaid.js"
 import { renderDiagramGridAnsi, renderDiagramGridStyledText } from "../core/render-grid.js"
 import { diagramTextWidth } from "../core/text.js"
+import { normalizeStateDiagramEndpoint } from "./endpoint.js"
+import { parseMermaidStateDiagram } from "./parser.js"
 import type {
   ActiveTransitionFadeStyle,
   ActiveTransitionPulseFadeStyle,
@@ -54,9 +55,7 @@ import type {
   StateDiagramAnsiOptions,
   StateDiagramAnsiTheme,
   StateDiagramArrowHeadStyle,
-  StateDiagramCompositeState,
   StateDiagramDirection,
-  StateDiagramNote,
   StateDiagramOptions,
   StateDiagramRenderOptions,
   StateDiagramState,
@@ -81,6 +80,7 @@ export type {
   StateDiagramStateColors,
   StateDiagramTransition,
 } from "./types.js"
+export { isMermaidStateDiagram, parseMermaidStateDiagram } from "./parser.js"
 
 interface StateDiagramRenderTransition extends StateDiagramTransition {
   sourceTransitions?: readonly StateDiagramTransition[]
@@ -114,7 +114,6 @@ interface TransitionFadeInfo {
   active: boolean
 }
 
-const DEFAULT_DIRECTION = "LR" satisfies StateDiagramDirection
 const DEFAULT_MIN_STATE_GAP = 5
 const DEFAULT_BORDER_STYLE = "rounded" satisfies BorderStyle
 const DEFAULT_ARROW_HEAD_STYLE = "filled" satisfies StateDiagramArrowHeadStyle
@@ -122,14 +121,6 @@ const DEFAULT_PULSE_LENGTH = 5
 const DEFAULT_PULSE_GAP = 14
 const ACTIVE_TRANSITION_FRONTIER_ACTIVE_SIDE = 2
 const ACTIVE_TRANSITION_FRONTIER_INACTIVE_SIDE = 5
-const STATE_RE = /^state\s+"([^"]+)"\s+as\s+(\S+)$/i
-const COMPOSITE_STATE_RE = /^state\s+(?:"([^"]+)"\s+as\s+)?(\S+)\s*\{$/i
-const CHOICE_STATE_RE = /^state\s+(\S+)\s+<<choice>>$/i
-const TRANSITION_RE = /^(\[\*\]|[^\s:]+)\s*-->\s*(\[\*\]|[^\s:]+)(?:\s*:\s*(.*))?$/
-const DIRECTION_RE = /^direction\s+(TB|TD|LR|RL)$/i
-const NOTE_INLINE_RE = /^note\s+(left|right)\s+of\s+(\S+)\s*:\s*(.*)$/i
-const NOTE_START_RE = /^note\s+(left|right)\s+of\s+(\S+)\s*$/i
-const NOTE_END_RE = /^end\s+note$/i
 const DEFAULT_THEME_RGB = {
   state: [228, 239, 232],
   activeState: [221, 255, 246],
@@ -356,12 +347,6 @@ function visualLength(value: string): number {
   return diagramTextWidth(value)
 }
 
-function normalizeDirection(value?: string): StateDiagramDirection {
-  const upper = value?.toUpperCase()
-  if (upper === "TB" || upper === "TD" || upper === "LR" || upper === "RL") return upper
-  return DEFAULT_DIRECTION
-}
-
 function normalizePulseFrame(value: number | undefined): number | undefined {
   return normalizeDiagramPulseFrame(value)
 }
@@ -384,23 +369,10 @@ function normalizePulseGap(value: number | undefined): number {
   return normalizeDiagramPulseGap(value, DEFAULT_PULSE_GAP)
 }
 
-function isMermaidHeader(line: string): boolean {
-  return line.toLowerCase() === "statediagram-v2" || line.toLowerCase() === "statediagram"
-}
-
-function markerId(position: "from" | "to", scope?: string): string {
-  const id = position === "from" ? "__start" : "__end"
-  return scope ? `${scope}.${id}` : id
-}
-
-function normalizeEndpoint(value: string, position: "from" | "to", scope?: string): string {
-  return value === "[*]" ? markerId(position, scope) : value
-}
-
 function normalizeActiveTransition(activeTransition: StateDiagramActiveTransition): StateDiagramActiveTransition {
   return {
-    from: normalizeEndpoint(activeTransition.from, "from"),
-    to: normalizeEndpoint(activeTransition.to, "to"),
+    from: normalizeStateDiagramEndpoint(activeTransition.from, "from"),
+    to: normalizeStateDiagramEndpoint(activeTransition.to, "to"),
     label: activeTransition.label,
   }
 }
@@ -462,160 +434,6 @@ function activeTransitionIndex(
   }
 
   return -1
-}
-
-function ensureState(
-  states: Map<string, StateDiagramState>,
-  id: string,
-  label = id,
-  kind: StateDiagramState["kind"] = "state",
-  parentId?: string,
-) {
-  const existing = states.get(id)
-  if (existing) {
-    if (existing.label === existing.id && label !== id) existing.label = label
-    if (parentId && !existing.parentId) existing.parentId = parentId
-    if (kind !== "state") {
-      existing.kind = kind
-      existing.label = label
-    }
-    return
-  }
-  states.set(id, parentId ? { id, label, kind, parentId } : { id, label, kind })
-}
-
-function resolveCompositeTransitionEndpoint(
-  id: string,
-  markerPosition: "from" | "to",
-  compositeIds: ReadonlySet<string>,
-  states: Map<string, StateDiagramState>,
-): string {
-  if (!compositeIds.has(id)) return id
-  const marker = markerId(markerPosition, id)
-  return states.has(marker) ? marker : id
-}
-
-function resolveCompositeTransitions(
-  transitions: readonly StateDiagramTransition[],
-  compositeIds: ReadonlySet<string>,
-  states: Map<string, StateDiagramState>,
-): StateDiagramTransition[] {
-  return transitions.map((transition) => ({
-    from: resolveCompositeTransitionEndpoint(transition.from, "to", compositeIds, states),
-    to: resolveCompositeTransitionEndpoint(transition.to, "from", compositeIds, states),
-    label: transition.label,
-  }))
-}
-
-export function isMermaidStateDiagram(content: string): boolean {
-  return isMermaidHeader(firstMeaningfulMermaidLine(content) ?? "")
-}
-
-export function parseMermaidStateDiagram(content: string): StateDiagram {
-  const states = new Map<string, StateDiagramState>()
-  const transitions: StateDiagramTransition[] = []
-  const composites: StateDiagramCompositeState[] = []
-  const notes: StateDiagramNote[] = []
-  const parentStack: string[] = []
-  let pendingNote: { target: string; position: "left" | "right"; lines: string[] } | undefined
-  let direction: StateDiagramDirection = DEFAULT_DIRECTION
-
-  for (const line of mermaidLines(content)) {
-    if (pendingNote) {
-      if (NOTE_END_RE.test(line)) {
-        notes.push({ target: pendingNote.target, position: pendingNote.position, lines: pendingNote.lines })
-        pendingNote = undefined
-      } else if (line || pendingNote.lines.length > 0) {
-        pendingNote.lines.push(line)
-      }
-      continue
-    }
-
-    if (!line || line.startsWith("%%") || isMermaidHeader(line)) continue
-
-    if (line === "}") {
-      parentStack.pop()
-      continue
-    }
-
-    const parentId = parentStack[parentStack.length - 1]
-
-    const directionMatch = line.match(DIRECTION_RE)
-    if (directionMatch) {
-      direction = normalizeDirection(directionMatch[1])
-      continue
-    }
-
-    const inlineNoteMatch = line.match(NOTE_INLINE_RE)
-    if (inlineNoteMatch) {
-      notes.push({
-        position: inlineNoteMatch[1]!.toLowerCase() as "left" | "right",
-        target: inlineNoteMatch[2]!,
-        lines: splitLines(inlineNoteMatch[3]!.trim()),
-      })
-      continue
-    }
-
-    const noteMatch = line.match(NOTE_START_RE)
-    if (noteMatch) {
-      pendingNote = {
-        position: noteMatch[1]!.toLowerCase() as "left" | "right",
-        target: noteMatch[2]!,
-        lines: [],
-      }
-      continue
-    }
-
-    const compositeMatch = line.match(COMPOSITE_STATE_RE)
-    if (compositeMatch) {
-      const id = compositeMatch[2]!
-      composites.push({
-        id,
-        label: compositeMatch[1] ?? id,
-        ...(parentId ? { parentId } : {}),
-      })
-      parentStack.push(id)
-      continue
-    }
-
-    const stateMatch = line.match(STATE_RE)
-    if (stateMatch) {
-      ensureState(states, stateMatch[2]!, stateMatch[1]!, "state", parentId)
-      continue
-    }
-
-    const choiceMatch = line.match(CHOICE_STATE_RE)
-    if (choiceMatch) {
-      ensureState(states, choiceMatch[1]!, "┼", "choice", parentId)
-      continue
-    }
-
-    const transitionMatch = line.match(TRANSITION_RE)
-    if (transitionMatch) {
-      const rawFrom = transitionMatch[1]!
-      const rawTo = transitionMatch[2]!
-      const from = normalizeEndpoint(rawFrom, "from", parentId)
-      const to = normalizeEndpoint(rawTo, "to", parentId)
-      ensureState(states, from, rawFrom === "[*]" ? "●" : from, rawFrom === "[*]" ? "start" : "state", parentId)
-      ensureState(states, to, rawTo === "[*]" ? "◎" : to, rawTo === "[*]" ? "end" : "state", parentId)
-      transitions.push({ from, to, label: transitionMatch[3]?.trim() ?? "" })
-    }
-  }
-
-  if (pendingNote) notes.push({ target: pendingNote.target, position: pendingNote.position, lines: pendingNote.lines })
-
-  if (composites.length === 0) {
-    return { direction, states: [...states.values()], transitions, composites, notes }
-  }
-
-  const compositeIds = new Set(composites.map((composite) => composite.id))
-  return {
-    direction,
-    states: [...states.values()].filter((state) => !compositeIds.has(state.id)),
-    transitions: resolveCompositeTransitions(transitions, compositeIds, states),
-    composites,
-    notes,
-  }
 }
 
 function makeGrid(width: number, height: number): StateGrid {
