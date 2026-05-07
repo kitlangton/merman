@@ -1,6 +1,6 @@
-import { BorderChars, StyledText, RGBA, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type TextChunk, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
-import { ANSI } from "../core/terminal/ansi.js"
+import { BorderChars, RGBA, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type StyledText, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
 import { DiagramCanvas, type DiagramCanvasCell } from "../core/canvas.js"
+import type { DiagramCanvasRunOptions } from "../core/canvas.js"
 import {
   diagramCellColorKey,
   diagramColorMapsEqual,
@@ -38,6 +38,7 @@ import {
   type StateDiagramNoteBounds as StateNoteBounds,
 } from "./layout.js"
 import { firstMeaningfulMermaidLine, mermaidLines } from "../core/mermaid.js"
+import { renderDiagramGridAnsi, renderDiagramGridStyledText } from "../core/render-grid.js"
 import { diagramTextWidth } from "../core/text.js"
 
 export type StateDiagramDirection = "TB" | "TD" | "LR" | "RL"
@@ -1669,75 +1670,28 @@ function renderGridText(grid: StateGrid): string {
   return grid.toString({ trimBottom: true })
 }
 
-function forEachGridRun(
-  grid: StateGrid,
-  onRun: (
-    text: string,
-    style: StateCellStyle | undefined,
-    stateId: string | undefined,
-    bgStateId: string | undefined,
-  ) => void,
-  onLineEnd: () => void,
-  useStateRuns = false,
-): void {
-  grid.forEachRun(
-    (run) => {
-      onRun(
-        run.text,
-        run.style,
-        useStateRuns ? run.cell.stateId : undefined,
-        useStateRuns ? run.cell.bgStateId : undefined,
-      )
-    },
-    onLineEnd,
-    { key: (cell) => (useStateRuns ? [cell.style, cell.stateId, cell.bgStateId] : [cell.style]) },
-  )
-}
-
 function renderGridStyledText(
   grid: StateGrid,
   colors: StateStyleColors,
   stateColors?: ReadonlyMap<string, RGBA>,
   stateBgColors?: ReadonlyMap<string, RGBA>,
 ): StyledText {
-  const chunks: TextChunk[] = []
   const useStateRuns = Boolean(stateColors?.size || stateBgColors?.size)
+  const runOptions: DiagramCanvasRunOptions<StateCellStyle, StateCellMetadata> | undefined = useStateRuns
+    ? { key: (cell) => [cell.style, cell.stateId, cell.bgStateId] }
+    : undefined
 
-  forEachGridRun(
+  return renderDiagramGridStyledText(
     grid,
-    (text, style, stateId, bgStateId) => {
-      chunks.push({
-        __isChunk: true,
-        text,
-        fg: styleColor(style, colors, stateColors, stateId),
-        bg: styleBgColor(stateBgColors, bgStateId),
-      })
-    },
-    () => {
-      chunks.push({ __isChunk: true, text: "\n" })
-    },
-    useStateRuns,
+    (run) => styleColor(run.style, colors, stateColors, useStateRuns ? run.cell.stateId : undefined),
+    (run) => styleBgColor(stateBgColors, useStateRuns ? run.cell.bgStateId : undefined),
+    runOptions,
   )
-
-  return new StyledText(chunks)
 }
 
 function renderGridAnsi(grid: StateGrid, theme: StateDiagramAnsiTheme = {}): string {
   const resolved = { ...DEFAULT_ANSI_THEME, ...theme }
-  let output = ""
-
-  forEachGridRun(
-    grid,
-    (text, style) => {
-      const ansi = style ? resolved[style] : undefined
-      output += ansi ? `${ansi}${text}${ANSI.reset}` : text
-    },
-    () => {
-      output += "\n"
-    },
-  )
-
-  return output.trimEnd()
+  return renderDiagramGridAnsi(grid, (run) => (run.style ? resolved[run.style] : undefined), { trimBottom: true })
 }
 
 export function renderStateDiagram(content: string, options: StateDiagramRenderOptions = {}): string {

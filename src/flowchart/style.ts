@@ -1,7 +1,7 @@
-import { RGBA, StyledText, type ColorInput, type TextChunk } from "@opentui/core"
-import { ANSI } from "../core/terminal/ansi.js"
+import { RGBA, type ColorInput, type StyledText } from "@opentui/core"
 import type { DiagramCanvas, DiagramCanvasRunOptions } from "../core/canvas.js"
 import { diagramCellColorKey, mappedDiagramColor } from "../core/color/map.js"
+import { renderDiagramGridAnsi, renderDiagramGridStyledText } from "../core/render-grid.js"
 import {
   ansiFg,
   createColorPeakAndRamp,
@@ -154,38 +154,19 @@ export function renderGridStyledText(
   nodeColors?: FlowchartNodeColorMap,
   nodeBgColors?: FlowchartNodeColorMap,
 ): StyledText {
-  const chunks: TextChunk[] = []
   const useNodeRuns = Boolean(nodeColors?.size || nodeBgColors?.size)
   const runOptions: DiagramCanvasRunOptions<FlowchartCellStyle, FlowchartCellMetadata> = useNodeRuns
     ? { trimBottom: true, key: (cell) => [cell.style, cell.nodeId, cell.bgNodeId] }
     : { trimBottom: true }
-  grid.forEachRun(
-    (run) => {
-      chunks.push({
-        __isChunk: true,
-        text: run.text,
-        fg: styleColor(run.style, colors, nodeColors, run.cell.nodeId),
-        bg: styleBgColor(nodeBgColors, run.cell.bgNodeId),
-      })
-    },
-    () => chunks.push({ __isChunk: true, text: "\n" }),
+  return renderDiagramGridStyledText(
+    grid,
+    (run) => styleColor(run.style, colors, nodeColors, run.cell.nodeId),
+    (run) => styleBgColor(nodeBgColors, run.cell.bgNodeId),
     runOptions,
   )
-  return new StyledText(chunks)
 }
 
 export function renderGridAnsi(grid: FlowchartGrid, theme: FlowchartDiagramAnsiTheme = {}): string {
   const resolved = { ...DEFAULT_ANSI_THEME, ...theme }
-  let output = ""
-  grid.forEachRun(
-    (run) => {
-      const ansi = run.style ? resolved[run.style] : undefined
-      output += ansi ? `${ansi}${run.text}${ANSI.reset}` : run.text
-    },
-    () => {
-      output += "\n"
-    },
-    { trimBottom: true },
-  )
-  return output
+  return renderDiagramGridAnsi(grid, (run) => (run.style ? resolved[run.style] : undefined), { trimBottom: true })
 }

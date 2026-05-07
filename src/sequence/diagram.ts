@@ -1,5 +1,4 @@
-import { BorderChars, StyledText, RGBA, type BorderStyle, type ColorInput, type RenderContext, type TextChunk, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
-import { ANSI } from "../core/terminal/ansi.js"
+import { BorderChars, RGBA, type BorderStyle, type ColorInput, type RenderContext, type StyledText, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
 import { DiagramCanvas } from "../core/canvas.js"
 import { diagramPulseCellStyle, diagramPulseStyleLevel } from "../core/animation/pulse-cell.js"
 import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
@@ -23,6 +22,7 @@ import {
 } from "../core/color/style.js"
 import { diagramTextWidth } from "../core/text.js"
 import { firstMeaningfulMermaidLine, meaningfulMermaidLines, stripMermaidQuotes as stripQuotes } from "../core/mermaid.js"
+import { renderDiagramGridAnsi, renderDiagramGridStyledText } from "../core/render-grid.js"
 
 export interface SequenceParticipant {
   id: string
@@ -700,51 +700,17 @@ function styleAnsi(
   return style ? theme[style] : undefined
 }
 
-function forEachGridRun(
-  grid: SequenceGrid,
-  onRun: (text: string, style: SequenceCellStyle | undefined) => void,
-  onLineEnd: () => void,
-): void {
-  grid.forEachRun((run) => onRun(run.text, run.style), onLineEnd)
-}
-
 function renderGridAnsi(grid: SequenceGrid, theme: SequenceDiagramAnsiTheme = {}): string {
   const resolvedTheme = { ...DEFAULT_ANSI_THEME, ...theme }
-  let output = ""
-
-  forEachGridRun(
-    grid,
-    (text, style) => {
-      const ansi = styleAnsi(style, resolvedTheme)
-      output += ansi ? `${ansi}${text}${ANSI.reset}` : text
-    },
-    () => {
-      output += "\n"
-    },
-  )
-
-  return output
+  return renderDiagramGridAnsi(grid, (run) => styleAnsi(run.style, resolvedTheme))
 }
 
 function renderGridStyledText(grid: SequenceGrid, colors: SequenceStyleColors): StyledText {
-  const chunks: TextChunk[] = []
-
-  forEachGridRun(
+  return renderDiagramGridStyledText(
     grid,
-    (text, style) => {
-      chunks.push({
-        __isChunk: true,
-        text,
-        fg: styleColor(style, colors),
-        bg: styleBackgroundColor(style, colors),
-      })
-    },
-    () => {
-      chunks.push({ __isChunk: true, text: "\n" })
-    },
+    (run) => styleColor(run.style, colors),
+    (run) => styleBackgroundColor(run.style, colors),
   )
-
-  return new StyledText(chunks)
 }
 
 function centeredStart(center: number, text: string): number {
