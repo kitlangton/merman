@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { parseColor } from "@opentui/core"
 import { createTestRenderer } from "@opentui/core/testing"
+import { expectDiagram } from "../test/diagram.js"
 import {
   parseMermaidSequenceDiagram,
   renderSequenceDiagram,
@@ -41,8 +42,8 @@ sequenceDiagram
   S-->>B: 401 WWW-Auth
 `)
 
-    expect(output).toMatchInlineSnapshot(`
-      "╭─────────╮       ╭────────╮
+    expectDiagram(output).toEqualDiagram(`
+      ╭─────────╮       ╭────────╮
       │ Browser │       │ Server │
       ╰────┬────╯       ╰────┬───╯
            │                 │
@@ -51,7 +52,7 @@ sequenceDiagram
            │                 │
            │ 401 WWW-Auth    │
            ◀─────────────────┤
-           │                 │"
+           │                 │
     `)
   })
 
@@ -83,10 +84,11 @@ sequenceDiagram
   Server->>Store: issue { ptyID, scope }
 `)
 
-    expect(output).toContain("native browser Basic prompt")
-    expect(output).toContain("POST connect-token")
-    expect(output).toContain("issue { ptyID, scope }")
-    expect(output.indexOf("native browser Basic prompt")).toBeLessThan(output.indexOf("POST connect-token"))
+    expectDiagram(output).toContainInOrder(
+      "native browser Basic prompt",
+      "POST connect-token",
+      "issue { ptyID, scope }",
+    )
   })
 
   test("parses activation shorthand and control blocks", () => {
@@ -200,12 +202,8 @@ sequenceDiagram
   end
 `)
 
-    expect(output).toContain("╭─ alt: accepted")
-    expect(output).toContain("├─ else: rejected")
-    expect(output).toContain("╰")
+    expectDiagram(output).toContainInOrder("╭─ alt: accepted", "ok", "├─ else: rejected", "no", "╰")
     expect(output).not.toContain("end alt")
-    expect(output.indexOf("alt: accepted")).toBeLessThan(output.indexOf("ok"))
-    expect(output.indexOf("else: rejected")).toBeLessThan(output.indexOf("no"))
   })
 
   test("renders fragment boxes with lifeline overhang", () => {

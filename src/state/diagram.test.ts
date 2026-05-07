@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { parseColor, type CapturedFrame, type RGBA } from "@opentui/core"
 import { createTestRenderer } from "@opentui/core/testing"
+import { expectDiagram } from "../test/diagram.js"
 import {
   parseMermaidStateDiagram,
   renderStateDiagram,
@@ -115,10 +116,10 @@ stateDiagram-v2
   Success --> [*]
 `)
 
-    expect(output).toMatchInlineSnapshot(`
-      "              ╭──────╮   submit    ╭─────────╮    done     ╭─────────╮
+    expectDiagram(output).toEqualDiagram(`
+                    ╭──────╮   submit    ╭─────────╮    done     ╭─────────╮
       ●────────────▶│ Idle ├────────────▶│ Loading ├────────────▶│ Success ├────────────▶◎
-                    ╰──────╯             ╰─────────╯             ╰─────────╯"
+                    ╰──────╯             ╰─────────╯             ╰─────────╯
     `)
   })
 

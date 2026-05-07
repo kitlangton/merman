@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { parseColor } from "@opentui/core"
 import { createTestRenderer } from "@opentui/core/testing"
 import { blendColor, colorsEqual, DIAGRAM_FADE_STEPS } from "../core/color/style.js"
+import { expectDiagram } from "../test/diagram.js"
 import { renderFlowchartGrid } from "./drawing.js"
 import { flowchartNodeColorKey, renderGridStyledText, resolveFlowchartStyleColors } from "./style.js"
 import {
@@ -120,9 +121,7 @@ flowchart LR
     const output = renderFlowchartDiagram(content)
 
     expect(diagram.nodes[0]).toEqual({ id: "Parse", label: "Parse", shape: "subroutine" })
-    expect(output).toContain("╭─┬─────┬─╮")
-    expect(output).toContain("│ │Parse│ ├")
-    expect(output).toContain("╰─┴─────┴─╯")
+    expectDiagram(output).toContainInOrder("╭─┬─────┬─╮", "│ │Parse│ ├", "╰─┴─────┴─╯")
   })
 
   test("parses and renders Mermaid thick edges", () => {
@@ -173,12 +172,12 @@ graph LR
   API --> Cache[(Cache)]
 `)
 
-    expect(output).toMatchInlineSnapshot(`
-      "                                     ╭───────╮
+    expectDiagram(output).toEqualDiagram(`
+                                           ╭───────╮
       ╭────────╮          ╭─────╮          ├───────┤
       │ Client ├─────────▶│ API ├─────────▶│ Cache │
       ╰────────╯          ╰─────╯          ├───────┤
-                                           ╰───────╯"
+                                           ╰───────╯
     `)
   })
 
