@@ -1,16 +1,14 @@
-import { BorderChars, RGBA, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type StyledText, TextBufferRenderable } from "@opentui/core"
+import { BorderChars, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type RGBA, type StyledText, TextBufferRenderable } from "@opentui/core"
 import { DiagramCanvas, type DiagramCanvasCell } from "../core/canvas.js"
 import type { DiagramCanvasRunOptions } from "../core/canvas.js"
 import {
-  diagramCellColorKey,
   diagramColorMapsEqual,
   diagramRadialCellColorLevel,
-  mappedDiagramColor,
   normalizeDiagramColorMap,
 } from "../core/color/map.js"
 import { diagramArrowHead, diagramLineGlyph, drawDiagramFrame, mergeDiagramLineGlyph } from "../core/drawing.js"
 import type { DiagramDirection } from "../core/geometry.js"
-import { diagramPulseStyleLevel, setDiagramPulseCell } from "../core/animation/pulse-cell.js"
+import { setDiagramPulseCell } from "../core/animation/pulse-cell.js"
 import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
 import {
   normalizeDiagramPulseFrame,
@@ -19,17 +17,6 @@ import {
   normalizeDiagramPulseProgress,
   visitDiagramPulsePath,
 } from "../core/animation/pulse.js"
-import {
-  ansiFg,
-  blendColor,
-  createAnsiPeakAndRampTheme,
-  createAnsiRampTheme,
-  DIAGRAM_FADE_STEPS,
-  numberedStyleKeys,
-  rgba,
-  type DiagramFadeStep,
-  type DiagramRgb,
-} from "../core/color/style.js"
 import {
   createStateDiagramLayout,
   expandCompositeBoundsForFeedback,
@@ -42,10 +29,21 @@ import { renderDiagramGridAnsi, renderDiagramGridStyledText } from "../core/rend
 import { diagramTextWidth } from "../core/text.js"
 import { normalizeStateDiagramEndpoint } from "./endpoint.js"
 import { parseMermaidStateDiagram } from "./parser.js"
+import {
+  isStateActiveTransitionStyle,
+  isStateTransitionFadeStyle,
+  resolveStateStyleColors,
+  resolveStateAnsiTheme,
+  STATE_ACTIVE_TRANSITION_PULSE_STYLES,
+  stateActiveTransitionPulseStyleLevel,
+  stateDiagramStateColorKey,
+  stateInactiveTransitionStyle,
+  stateStyleBgColor,
+  stateStyleColor,
+  stateTransitionFadeStyle,
+  type StateStyleColors,
+} from "./style.js"
 import type {
-  ActiveTransitionFadeStyle,
-  ActiveTransitionPulseFadeStyle,
-  BaseStateCellStyle,
   FadeSourceStyle,
   StateCellStyle,
   StateDiagram,
@@ -61,7 +59,6 @@ import type {
   StateDiagramState,
   StateDiagramStateColors,
   StateDiagramTransition,
-  TransitionFadeStyle,
 } from "./types.js"
 export type {
   StateDiagram,
@@ -81,15 +78,11 @@ export type {
   StateDiagramTransition,
 } from "./types.js"
 export { isMermaidStateDiagram, parseMermaidStateDiagram } from "./parser.js"
+export { stateDiagramStateColorKey } from "./style.js"
 
 interface StateDiagramRenderTransition extends StateDiagramTransition {
   sourceTransitions?: readonly StateDiagramTransition[]
 }
-
-type StateStyleColors = Required<Record<BaseStateCellStyle, RGBA>> &
-  Required<Record<TransitionFadeStyle, RGBA>> &
-  Required<Record<ActiveTransitionFadeStyle, RGBA>> &
-  Required<Record<ActiveTransitionPulseFadeStyle, RGBA>>
 
 interface StateCellMetadata {
   stateId?: string
@@ -109,11 +102,6 @@ interface TransitionDrawContext {
   sourceStateId: string
 }
 
-interface TransitionFadeInfo {
-  step: DiagramFadeStep
-  active: boolean
-}
-
 const DEFAULT_MIN_STATE_GAP = 5
 const DEFAULT_BORDER_STYLE = "rounded" satisfies BorderStyle
 const DEFAULT_ARROW_HEAD_STYLE = "filled" satisfies StateDiagramArrowHeadStyle
@@ -121,227 +109,6 @@ const DEFAULT_PULSE_LENGTH = 5
 const DEFAULT_PULSE_GAP = 14
 const ACTIVE_TRANSITION_FRONTIER_ACTIVE_SIDE = 2
 const ACTIVE_TRANSITION_FRONTIER_INACTIVE_SIDE = 5
-const DEFAULT_THEME_RGB = {
-  state: [228, 239, 232],
-  activeState: [221, 255, 246],
-  composite: [111, 138, 126],
-  transition: [134, 225, 200],
-  activeTransition: [221, 255, 246],
-  activeTransitionPulse: [255, 232, 205],
-  label: [134, 225, 200],
-  noteBorder: [141, 169, 155],
-  noteText: [215, 229, 221],
-  noteConnector: [141, 169, 155],
-  start: [134, 225, 200],
-  end: [230, 177, 126],
-  choice: [134, 225, 200],
-} as const satisfies Record<BaseStateCellStyle, DiagramRgb>
-const FADE_STEPS = DIAGRAM_FADE_STEPS
-const FADE_SOURCE_STYLES = [
-  "state",
-  "activeState",
-  "composite",
-  "start",
-  "end",
-  "choice",
-] as const satisfies readonly FadeSourceStyle[]
-const TRANSITION_FADE_STYLES = createTransitionFadeStyles()
-const ACTIVE_TRANSITION_FADE_STYLES = createActiveTransitionFadeStyles()
-const ACTIVE_TRANSITION_PULSE_FADE_STYLES = numberedStyleKeys("activeTransitionPulseFade", FADE_STEPS)
-const ACTIVE_TRANSITION_PULSE_STYLES = [
-  ...ACTIVE_TRANSITION_PULSE_FADE_STYLES,
-  "activeTransitionPulse",
-] as const satisfies readonly StateCellStyle[]
-const ACTIVE_TRANSITION_STYLES = new Set<StateCellStyle>([
-  "activeTransition",
-  ...FADE_STEPS.flatMap((step) =>
-    FADE_SOURCE_STYLES.map((source) => `${source}ActiveTransitionFade${step}` as StateCellStyle),
-  ),
-])
-const TRANSITION_FADE_INFOS: ReadonlyMap<StateCellStyle, TransitionFadeInfo> = new Map(
-  FADE_SOURCE_STYLES.flatMap((source) =>
-    FADE_STEPS.flatMap(
-      (step): Array<[StateCellStyle, TransitionFadeInfo]> => [
-        [`${source}TransitionFade${step}` as StateCellStyle, { step, active: false }],
-        [`${source}ActiveTransitionFade${step}` as StateCellStyle, { step, active: true }],
-      ],
-    ),
-  ),
-)
-const DEFAULT_ANSI_THEME: Required<Record<StateCellStyle, string>> = {
-  state: ansiFg(DEFAULT_THEME_RGB.state),
-  activeState: ansiFg(DEFAULT_THEME_RGB.activeState),
-  composite: ansiFg(DEFAULT_THEME_RGB.composite),
-  transition: ansiFg(DEFAULT_THEME_RGB.transition),
-  activeTransition: ansiFg(DEFAULT_THEME_RGB.activeTransition),
-  label: ansiFg(DEFAULT_THEME_RGB.label),
-  noteBorder: ansiFg(DEFAULT_THEME_RGB.noteBorder),
-  noteText: ansiFg(DEFAULT_THEME_RGB.noteText),
-  noteConnector: ansiFg(DEFAULT_THEME_RGB.noteConnector),
-  start: ansiFg(DEFAULT_THEME_RGB.start),
-  end: ansiFg(DEFAULT_THEME_RGB.end),
-  choice: ansiFg(DEFAULT_THEME_RGB.choice),
-  ...createAnsiFadeTheme("state", DEFAULT_THEME_RGB.state, DEFAULT_THEME_RGB.transition),
-  ...createAnsiFadeTheme("activeState", DEFAULT_THEME_RGB.activeState, DEFAULT_THEME_RGB.transition),
-  ...createAnsiFadeTheme("composite", DEFAULT_THEME_RGB.composite, DEFAULT_THEME_RGB.transition),
-  ...createAnsiFadeTheme("start", DEFAULT_THEME_RGB.start, DEFAULT_THEME_RGB.transition),
-  ...createAnsiFadeTheme("end", DEFAULT_THEME_RGB.end, DEFAULT_THEME_RGB.transition),
-  ...createAnsiFadeTheme("choice", DEFAULT_THEME_RGB.choice, DEFAULT_THEME_RGB.transition),
-  ...createAnsiActiveTransitionFadeTheme("state", DEFAULT_THEME_RGB.state, DEFAULT_THEME_RGB.activeTransition),
-  ...createAnsiActiveTransitionFadeTheme(
-    "activeState",
-    DEFAULT_THEME_RGB.activeState,
-    DEFAULT_THEME_RGB.activeTransition,
-  ),
-  ...createAnsiActiveTransitionFadeTheme("composite", DEFAULT_THEME_RGB.composite, DEFAULT_THEME_RGB.activeTransition),
-  ...createAnsiActiveTransitionFadeTheme("start", DEFAULT_THEME_RGB.start, DEFAULT_THEME_RGB.activeTransition),
-  ...createAnsiActiveTransitionFadeTheme("end", DEFAULT_THEME_RGB.end, DEFAULT_THEME_RGB.activeTransition),
-  ...createAnsiActiveTransitionFadeTheme("choice", DEFAULT_THEME_RGB.choice, DEFAULT_THEME_RGB.activeTransition),
-  ...createAnsiActiveTransitionPulseTheme(DEFAULT_THEME_RGB.activeTransition, DEFAULT_THEME_RGB.activeTransitionPulse),
-}
-
-function createTransitionFadeStyles(): Record<FadeSourceStyle, readonly TransitionFadeStyle[]> {
-  const styles = {} as Record<FadeSourceStyle, readonly TransitionFadeStyle[]>
-  for (const source of FADE_SOURCE_STYLES) {
-    styles[source] = numberedStyleKeys(`${source}TransitionFade`, FADE_STEPS)
-  }
-  return styles
-}
-
-function createActiveTransitionFadeStyles(): Record<FadeSourceStyle, readonly ActiveTransitionFadeStyle[]> {
-  const styles = {} as Record<FadeSourceStyle, readonly ActiveTransitionFadeStyle[]>
-  for (const source of FADE_SOURCE_STYLES) {
-    styles[source] = numberedStyleKeys(`${source}ActiveTransitionFade`, FADE_STEPS)
-  }
-  return styles
-}
-
-function createAnsiFadeTheme(
-  source: FadeSourceStyle,
-  from: DiagramRgb,
-  to: DiagramRgb,
-): Record<TransitionFadeStyle, string> {
-  return createAnsiRampTheme(TRANSITION_FADE_STYLES[source], from, to) as Record<TransitionFadeStyle, string>
-}
-
-function createAnsiActiveTransitionFadeTheme(
-  source: FadeSourceStyle,
-  from: DiagramRgb,
-  to: DiagramRgb,
-): Record<ActiveTransitionFadeStyle, string> {
-  return createAnsiRampTheme(ACTIVE_TRANSITION_FADE_STYLES[source], from, to) as Record<
-    ActiveTransitionFadeStyle,
-    string
-  >
-}
-
-function createAnsiActiveTransitionPulseTheme(
-  from: DiagramRgb,
-  to: DiagramRgb,
-): Record<"activeTransitionPulse" | ActiveTransitionPulseFadeStyle, string> {
-  return createAnsiPeakAndRampTheme(
-    "activeTransitionPulse",
-    numberedStyleKeys("activeTransitionPulseFade", FADE_STEPS),
-    from,
-    to,
-  )
-}
-
-export function stateDiagramStateColorKey(stateId: string, level: number): string {
-  return diagramCellColorKey(stateId, level)
-}
-
-function stateMappedColor(
-  colors: ReadonlyMap<string, RGBA> | undefined,
-  stateId: string | undefined,
-): RGBA | undefined {
-  return mappedDiagramColor(colors, stateId)
-}
-
-function transitionFadeInfo(style: StateCellStyle | undefined): TransitionFadeInfo | undefined {
-  return style ? TRANSITION_FADE_INFOS.get(style) : undefined
-}
-
-function assignStateFadeColors<Style extends StateCellStyle>(
-  target: Partial<Record<Style, RGBA>>,
-  styles: readonly Style[],
-  from: RGBA,
-  to: RGBA,
-): void {
-  for (const [index, style] of styles.entries()) {
-    target[style] = blendColor(from, to, (index + 1) / (styles.length + 1))
-  }
-}
-
-function styleColor(
-  style: StateCellStyle | undefined,
-  colors: StateStyleColors,
-  stateColors?: ReadonlyMap<string, RGBA>,
-  stateId?: string,
-): RGBA | undefined {
-  const stateColor = stateMappedColor(stateColors, stateId)
-  if (!stateColor) return style ? colors[style] : undefined
-
-  const fadeInfo = transitionFadeInfo(style)
-  if (fadeInfo) {
-    return blendColor(stateColor, fadeInfo.active ? colors.activeTransition : colors.transition, fadeInfo.step / 6)
-  }
-  return stateColor
-}
-
-function styleBgColor(
-  stateBgColors: ReadonlyMap<string, RGBA> | undefined,
-  stateId: string | undefined,
-): RGBA | undefined {
-  return stateMappedColor(stateBgColors, stateId)
-}
-
-function resolveStateStyleColors(colors: Partial<Record<StateCellStyle, RGBA | undefined>> = {}): StateStyleColors {
-  const state = colors.state ?? rgba(DEFAULT_THEME_RGB.state)
-  const composite = colors.composite ?? rgba(DEFAULT_THEME_RGB.composite)
-  const transition = colors.transition ?? rgba(DEFAULT_THEME_RGB.transition)
-  const activeTransition = colors.activeTransition ?? rgba(DEFAULT_THEME_RGB.activeTransition)
-  const activeTransitionPulse = colors.activeTransitionPulse ?? rgba(DEFAULT_THEME_RGB.activeTransitionPulse)
-  const activeState = colors.activeState ?? rgba(DEFAULT_THEME_RGB.activeState)
-  const start = colors.start ?? rgba(DEFAULT_THEME_RGB.start)
-  const end = colors.end ?? rgba(DEFAULT_THEME_RGB.end)
-  const choice = colors.choice ?? transition
-  const noteBorder = colors.noteBorder ?? rgba(DEFAULT_THEME_RGB.noteBorder)
-  const noteText = colors.noteText ?? rgba(DEFAULT_THEME_RGB.noteText)
-  const noteConnector = colors.noteConnector ?? noteBorder
-
-  const sourceColors = {
-    state,
-    activeState,
-    composite,
-    start,
-    end,
-    choice,
-  } satisfies Record<FadeSourceStyle, RGBA>
-  const styleColors: Partial<Record<StateCellStyle, RGBA>> = {
-    state,
-    activeState,
-    composite,
-    transition,
-    activeTransition,
-    activeTransitionPulse,
-    label: colors.label ?? transition,
-    noteBorder,
-    noteText,
-    noteConnector,
-    start,
-    end,
-    choice,
-  }
-
-  for (const source of FADE_SOURCE_STYLES) {
-    assignStateFadeColors(styleColors, TRANSITION_FADE_STYLES[source], sourceColors[source], transition)
-    assignStateFadeColors(styleColors, ACTIVE_TRANSITION_FADE_STYLES[source], sourceColors[source], activeTransition)
-  }
-  assignStateFadeColors(styleColors, ACTIVE_TRANSITION_PULSE_FADE_STYLES, activeTransition, activeTransitionPulse)
-
-  return styleColors as StateStyleColors
-}
 
 function visualLength(value: string): number {
   return diagramTextWidth(value)
@@ -454,8 +221,8 @@ function isTransitionDrawingStyle(style: StateCellStyle | undefined): boolean {
   return (
     style === "transition" ||
     style === "activeTransition" ||
-    isActiveTransitionStyle(style) ||
-    (typeof style === "string" && style.includes("TransitionFade"))
+    isStateActiveTransitionStyle(style) ||
+    isStateTransitionFadeStyle(style)
   )
 }
 
@@ -719,25 +486,8 @@ function transitionLabelStyle(active: boolean): StateCellStyle {
   return active ? "activeTransition" : "label"
 }
 
-function transitionFadeStyle(
-  source: FadeSourceStyle,
-  distance: number,
-  active: boolean,
-  fadeFromSource: boolean,
-): StateCellStyle {
-  if (active) {
-    if (!fadeFromSource) return "activeTransition"
-    if (distance <= 0) return `${source}ActiveTransitionFade1` as ActiveTransitionFadeStyle
-    if (distance >= FADE_STEPS.length) return "activeTransition"
-    return `${source}ActiveTransitionFade${distance + 1}` as ActiveTransitionFadeStyle
-  }
-  if (distance <= 0) return `${source}TransitionFade1` as TransitionFadeStyle
-  if (distance >= FADE_STEPS.length) return transitionLineStyle(active)
-  return `${source}TransitionFade${distance + 1}` as TransitionFadeStyle
-}
-
 function transitionFadeCellStyle(context: TransitionDrawContext, distance: number): StateCellStyle {
-  return transitionFadeStyle(context.fadeSource, distance, context.active, context.fadeFromSource)
+  return stateTransitionFadeStyle(context.fadeSource, context.active, distance, context.fadeFromSource)
 }
 
 function drawHorizontalRamp(
@@ -1134,16 +884,8 @@ function drawHiddenCompositeMarkerJunctions(
   }
 }
 
-function isActiveTransitionStyle(style: StateCellStyle | undefined): boolean {
-  return style ? ACTIVE_TRANSITION_STYLES.has(style) : false
-}
-
-function activeTransitionPulseStyleLevel(style: StateCellStyle | undefined): number {
-  return diagramPulseStyleLevel(style, ACTIVE_TRANSITION_PULSE_STYLES)
-}
-
 function isActiveTransitionPulseTargetStyle(style: StateCellStyle | undefined): boolean {
-  return isActiveTransitionStyle(style) || activeTransitionPulseStyleLevel(style) > 0
+  return isStateActiveTransitionStyle(style) || stateActiveTransitionPulseStyleLevel(style) > 0
 }
 
 function setActiveTransitionPulseCell(
@@ -1158,7 +900,7 @@ function setActiveTransitionPulseCell(
 }
 
 function isTransitionFrontierStyle(style: StateCellStyle | undefined): boolean {
-  return isTransitionDrawingStyle(style) || activeTransitionPulseStyleLevel(style) > 0
+  return isTransitionDrawingStyle(style) || stateActiveTransitionPulseStyleLevel(style) > 0
 }
 
 function setTransitionPulseCell(
@@ -1170,7 +912,7 @@ function setTransitionPulseCell(
   edgeDistance: number,
   canStyle: (style: StateCellStyle | undefined) => boolean,
 ): void {
-  setDiagramPulseCell(grid, x, y, distance, radius, edgeDistance, ACTIVE_TRANSITION_PULSE_STYLES, canStyle)
+  setDiagramPulseCell(grid, x, y, distance, radius, edgeDistance, STATE_ACTIVE_TRANSITION_PULSE_STYLES, canStyle)
 }
 
 function setTransitionFrontierCell(
@@ -1233,18 +975,10 @@ function applyActiveTransitionPulse(
   drawActiveTransitionPulseOnPaths(grid, activeTransitionPaths, pulseFrame, pulseProgress, pulseLength, pulseGap)
 }
 
-function inactiveTransitionStyle(style: StateCellStyle | undefined): StateCellStyle | undefined {
-  if (style === "activeTransition") return "transition"
-  if (style?.includes("ActiveTransitionFade")) {
-    return style.replace("ActiveTransitionFade", "TransitionFade") as TransitionFadeStyle
-  }
-  return style
-}
-
 function setInactiveTransitionCell(grid: StateGrid, x: number, y: number): void {
   const cell = grid.getCell(x, y)
-  if (!cell || !isActiveTransitionStyle(cell.style)) return
-  cell.style = inactiveTransitionStyle(cell.style)
+  if (!cell || !isStateActiveTransitionStyle(cell.style)) return
+  cell.style = stateInactiveTransitionStyle(cell.style)
 }
 
 function applyActiveTransitionMask(
@@ -1396,14 +1130,14 @@ function renderGridStyledText(
 
   return renderDiagramGridStyledText(
     grid,
-    (run) => styleColor(run.style, colors, stateColors, useStateRuns ? run.cell.stateId : undefined),
-    (run) => styleBgColor(stateBgColors, useStateRuns ? run.cell.bgStateId : undefined),
+    (run) => stateStyleColor(run.style, colors, stateColors, useStateRuns ? run.cell.stateId : undefined),
+    (run) => stateStyleBgColor(stateBgColors, useStateRuns ? run.cell.bgStateId : undefined),
     runOptions,
   )
 }
 
 function renderGridAnsi(grid: StateGrid, theme: StateDiagramAnsiTheme = {}): string {
-  const resolved = { ...DEFAULT_ANSI_THEME, ...theme }
+  const resolved = resolveStateAnsiTheme(theme)
   return renderDiagramGridAnsi(grid, (run) => (run.style ? resolved[run.style] : undefined), { trimBottom: true })
 }
 
