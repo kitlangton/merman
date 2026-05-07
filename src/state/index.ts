@@ -14,7 +14,7 @@ export type {
   StateDiagramState,
   StateDiagramStateColors,
   StateDiagramTransition,
-} from "./diagram.js"
+} from "./types.js"
 export {
   isMermaidStateDiagram,
   parseMermaidStateDiagram,

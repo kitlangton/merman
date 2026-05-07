@@ -1,4 +1,4 @@
-import { BorderChars, RGBA, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type StyledText, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
+import { BorderChars, RGBA, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type StyledText, TextBufferRenderable } from "@opentui/core"
 import { DiagramCanvas, type DiagramCanvasCell } from "../core/canvas.js"
 import type { DiagramCanvasRunOptions } from "../core/canvas.js"
 import {
@@ -41,125 +41,50 @@ import {
 import { firstMeaningfulMermaidLine, mermaidLines } from "../core/mermaid.js"
 import { renderDiagramGridAnsi, renderDiagramGridStyledText } from "../core/render-grid.js"
 import { diagramTextWidth } from "../core/text.js"
-
-export type StateDiagramDirection = "TB" | "TD" | "LR" | "RL"
-export type StateDiagramArrowHeadStyle = "filled" | "line"
-export type StateDiagramActiveTransitionMode = "reveal" | "fade"
-
-export interface StateDiagramState {
-  id: string
-  label: string
-  kind: "state" | "start" | "end" | "choice"
-  parentId?: string
-}
-
-export interface StateDiagramTransition {
-  from: string
-  to: string
-  label: string
-}
+import type {
+  ActiveTransitionFadeStyle,
+  ActiveTransitionPulseFadeStyle,
+  BaseStateCellStyle,
+  FadeSourceStyle,
+  StateCellStyle,
+  StateDiagram,
+  StateDiagramActiveTransition,
+  StateDiagramActiveTransitionMode,
+  StateDiagramActiveTransitionSelection,
+  StateDiagramAnsiOptions,
+  StateDiagramAnsiTheme,
+  StateDiagramArrowHeadStyle,
+  StateDiagramCompositeState,
+  StateDiagramDirection,
+  StateDiagramNote,
+  StateDiagramOptions,
+  StateDiagramRenderOptions,
+  StateDiagramState,
+  StateDiagramStateColors,
+  StateDiagramTransition,
+  TransitionFadeStyle,
+} from "./types.js"
+export type {
+  StateDiagram,
+  StateDiagramActiveTransition,
+  StateDiagramActiveTransitionMode,
+  StateDiagramActiveTransitionSelection,
+  StateDiagramAnsiOptions,
+  StateDiagramAnsiTheme,
+  StateDiagramArrowHeadStyle,
+  StateDiagramCompositeState,
+  StateDiagramDirection,
+  StateDiagramNote,
+  StateDiagramOptions,
+  StateDiagramRenderOptions,
+  StateDiagramState,
+  StateDiagramStateColors,
+  StateDiagramTransition,
+} from "./types.js"
 
 interface StateDiagramRenderTransition extends StateDiagramTransition {
   sourceTransitions?: readonly StateDiagramTransition[]
 }
-
-export interface StateDiagramActiveTransition {
-  from: string
-  to: string
-  label?: string
-}
-
-export interface StateDiagramCompositeState {
-  id: string
-  label: string
-  parentId?: string
-}
-
-export interface StateDiagramNote {
-  target: string
-  position: "left" | "right"
-  lines: string[]
-}
-
-export type StateDiagramActiveTransitionSelection =
-  | StateDiagramActiveTransition
-  | readonly StateDiagramActiveTransition[]
-export type StateDiagramStateColors =
-  | Record<string, ColorInput | undefined>
-  | ReadonlyMap<string, ColorInput | undefined>
-
-export interface StateDiagram {
-  direction: StateDiagramDirection
-  states: StateDiagramState[]
-  transitions: StateDiagramTransition[]
-  composites: StateDiagramCompositeState[]
-  notes: StateDiagramNote[]
-}
-
-export interface StateDiagramRenderOptions {
-  direction?: StateDiagramDirection
-  borderStyle?: BorderStyle
-  arrowHeadStyle?: StateDiagramArrowHeadStyle
-  minStateGap?: number
-  activeState?: string
-  activeTransition?: StateDiagramActiveTransitionSelection
-  activeTransitionProgress?: number
-  activeTransitionMode?: StateDiagramActiveTransitionMode
-  pulseFrame?: number
-  pulseProgress?: number
-  pulseLength?: number
-  pulseGap?: number
-}
-
-export interface StateDiagramAnsiOptions extends StateDiagramRenderOptions {
-  theme?: StateDiagramAnsiTheme
-}
-
-export interface StateDiagramOptions extends TextBufferOptions, StateDiagramRenderOptions {
-  content?: string
-  stateColor?: ColorInput
-  activeStateColor?: ColorInput
-  compositeColor?: ColorInput
-  transitionColor?: ColorInput
-  labelColor?: ColorInput
-  noteBorderColor?: ColorInput
-  noteTextColor?: ColorInput
-  noteConnectorColor?: ColorInput
-  pulseColor?: ColorInput
-  startColor?: ColorInput
-  endColor?: ColorInput
-  choiceColor?: ColorInput
-  activeTransitionColor?: ColorInput
-  stateColors?: StateDiagramStateColors
-  stateBgColors?: StateDiagramStateColors
-}
-
-export type StateDiagramAnsiTheme = Partial<Record<StateCellStyle, string>>
-
-type FadeStep = DiagramFadeStep
-type FadeSourceStyle = "state" | "activeState" | "composite" | "start" | "end" | "choice"
-type TransitionFadeStyle = `${FadeSourceStyle}TransitionFade${FadeStep}`
-type ActiveTransitionFadeStyle = `${FadeSourceStyle}ActiveTransitionFade${FadeStep}`
-type ActiveTransitionPulseFadeStyle = `activeTransitionPulseFade${FadeStep}`
-type BaseStateCellStyle =
-  | "state"
-  | "activeState"
-  | "composite"
-  | "transition"
-  | "activeTransition"
-  | "activeTransitionPulse"
-  | "label"
-  | "noteBorder"
-  | "noteText"
-  | "noteConnector"
-  | "start"
-  | "end"
-  | "choice"
-type StateCellStyle =
-  | BaseStateCellStyle
-  | TransitionFadeStyle
-  | ActiveTransitionFadeStyle
-  | ActiveTransitionPulseFadeStyle
 
 type StateStyleColors = Required<Record<BaseStateCellStyle, RGBA>> &
   Required<Record<TransitionFadeStyle, RGBA>> &
@@ -185,7 +110,7 @@ interface TransitionDrawContext {
 }
 
 interface TransitionFadeInfo {
-  step: FadeStep
+  step: DiagramFadeStep
   active: boolean
 }
 

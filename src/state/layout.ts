@@ -6,7 +6,7 @@ import type {
   StateDiagramNote,
   StateDiagramState,
   StateDiagramTransition,
-} from "./diagram.js"
+} from "./types.js"
 
 export interface StateDiagramBoxBounds {
   id: string
