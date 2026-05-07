@@ -3,8 +3,9 @@ import { DiagramCanvas } from "../core/canvas.js"
 import { diagramPulseCellStyle, diagramPulseStyleLevel } from "../core/animation/pulse-cell.js"
 import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
 import {
-  normalizeDiagramPositiveInt,
   normalizeDiagramPulseFrame,
+  normalizeDiagramPulseGap,
+  normalizeDiagramPulseLength,
   visitDiagramPulsePath,
 } from "../core/animation/pulse.js"
 import {
@@ -141,8 +142,6 @@ type SequenceStyleColors = Partial<Record<AnsiSequenceCellStyle, RGBA>> & {
 }
 
 const DEFAULT_MIN_PARTICIPANT_GAP = 18
-const DEFAULT_PULSE_LENGTH = 7
-const DEFAULT_PULSE_GAP = 16
 const NOTE_HORIZONTAL_PADDING = 1
 const GROUP_HORIZONTAL_PADDING = 2
 const FRAGMENT_HORIZONTAL_OVERHANG = 3
@@ -282,11 +281,11 @@ function normalizePulseFrame(value: number | undefined): number | undefined {
 }
 
 function normalizePulseLength(value: number | undefined): number {
-  return normalizeDiagramPositiveInt(value, DEFAULT_PULSE_LENGTH)
+  return normalizeDiagramPulseLength(value)
 }
 
 function normalizePulseGap(value: number | undefined): number {
-  return normalizeDiagramPositiveInt(value, DEFAULT_PULSE_GAP)
+  return normalizeDiagramPulseGap(value)
 }
 
 function isBoxColorToken(value: string): boolean {

@@ -1,14 +1,12 @@
 import type { BorderStyle, ColorInput, TextBufferOptions } from "@opentui/core"
 import {
-  normalizeDiagramPositiveInt,
   normalizeDiagramPulseFrame,
+  normalizeDiagramPulseGap,
+  normalizeDiagramPulseLength,
   normalizeDiagramPulseProgress,
 } from "../core/animation/pulse.js"
 import type { FlowchartDiagramAnsiTheme, FlowchartNodeColors } from "./style.js"
 import type { FlowchartActiveEdgeSelection, FlowchartDirection } from "./types.js"
-
-const DEFAULT_PULSE_LENGTH = 7
-const DEFAULT_PULSE_GAP = 16
 
 export function normalizeFlowchartPulseFrame(value: number | undefined): number | undefined {
   return normalizeDiagramPulseFrame(value)
@@ -19,11 +17,11 @@ export function normalizeFlowchartPulseProgress(value: number | undefined): numb
 }
 
 export function normalizeFlowchartPulseLength(value: number | undefined): number {
-  return normalizeDiagramPositiveInt(value, DEFAULT_PULSE_LENGTH)
+  return normalizeDiagramPulseLength(value)
 }
 
 export function normalizeFlowchartPulseGap(value: number | undefined): number {
-  return normalizeDiagramPositiveInt(value, DEFAULT_PULSE_GAP)
+  return normalizeDiagramPulseGap(value)
 }
 
 export interface FlowchartDiagramRenderOptions {

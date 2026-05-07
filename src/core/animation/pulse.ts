@@ -1,5 +1,8 @@
 export type DiagramPulsePoint = readonly [number, number]
 
+export const DEFAULT_DIAGRAM_PULSE_LENGTH = 7
+export const DEFAULT_DIAGRAM_PULSE_GAP = 16
+
 export interface DiagramPulsePathOptions {
   pathLength: number
   pointAt: (index: number) => DiagramPulsePoint | undefined
@@ -22,6 +25,17 @@ export function normalizeDiagramPulseProgress(value: number | undefined): number
 export function normalizeDiagramPositiveInt(value: number | undefined, fallback: number): number {
   if (value === undefined || !Number.isFinite(value)) return fallback
   return Math.max(1, Math.trunc(value))
+}
+
+export function normalizeDiagramPulseLength(
+  value: number | undefined,
+  fallback = DEFAULT_DIAGRAM_PULSE_LENGTH,
+): number {
+  return normalizeDiagramPositiveInt(value, fallback)
+}
+
+export function normalizeDiagramPulseGap(value: number | undefined, fallback = DEFAULT_DIAGRAM_PULSE_GAP): number {
+  return normalizeDiagramPositiveInt(value, fallback)
 }
 
 export function diagramPulseLevel(

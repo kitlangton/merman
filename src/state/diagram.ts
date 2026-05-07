@@ -13,8 +13,9 @@ import type { DiagramDirection } from "../core/geometry.js"
 import { diagramPulseStyleLevel, setDiagramPulseCell } from "../core/animation/pulse-cell.js"
 import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
 import {
-  normalizeDiagramPositiveInt,
   normalizeDiagramPulseFrame,
+  normalizeDiagramPulseGap,
+  normalizeDiagramPulseLength,
   normalizeDiagramPulseProgress,
   visitDiagramPulsePath,
 } from "../core/animation/pulse.js"
@@ -228,12 +229,11 @@ const FADE_SOURCE_STYLES = [
   "end",
   "choice",
 ] as const satisfies readonly FadeSourceStyle[]
+const TRANSITION_FADE_STYLES = createTransitionFadeStyles()
+const ACTIVE_TRANSITION_FADE_STYLES = createActiveTransitionFadeStyles()
+const ACTIVE_TRANSITION_PULSE_FADE_STYLES = numberedStyleKeys("activeTransitionPulseFade", FADE_STEPS)
 const ACTIVE_TRANSITION_PULSE_STYLES = [
-  "activeTransitionPulseFade1",
-  "activeTransitionPulseFade2",
-  "activeTransitionPulseFade3",
-  "activeTransitionPulseFade4",
-  "activeTransitionPulseFade5",
+  ...ACTIVE_TRANSITION_PULSE_FADE_STYLES,
   "activeTransitionPulse",
 ] as const satisfies readonly StateCellStyle[]
 const ACTIVE_TRANSITION_STYLES = new Set<StateCellStyle>([
@@ -284,15 +284,28 @@ const DEFAULT_ANSI_THEME: Required<Record<StateCellStyle, string>> = {
   ...createAnsiActiveTransitionPulseTheme(DEFAULT_THEME_RGB.activeTransition, DEFAULT_THEME_RGB.activeTransitionPulse),
 }
 
+function createTransitionFadeStyles(): Record<FadeSourceStyle, readonly TransitionFadeStyle[]> {
+  const styles = {} as Record<FadeSourceStyle, readonly TransitionFadeStyle[]>
+  for (const source of FADE_SOURCE_STYLES) {
+    styles[source] = numberedStyleKeys(`${source}TransitionFade`, FADE_STEPS)
+  }
+  return styles
+}
+
+function createActiveTransitionFadeStyles(): Record<FadeSourceStyle, readonly ActiveTransitionFadeStyle[]> {
+  const styles = {} as Record<FadeSourceStyle, readonly ActiveTransitionFadeStyle[]>
+  for (const source of FADE_SOURCE_STYLES) {
+    styles[source] = numberedStyleKeys(`${source}ActiveTransitionFade`, FADE_STEPS)
+  }
+  return styles
+}
+
 function createAnsiFadeTheme(
   source: FadeSourceStyle,
   from: DiagramRgb,
   to: DiagramRgb,
 ): Record<TransitionFadeStyle, string> {
-  return createAnsiRampTheme(numberedStyleKeys(`${source}TransitionFade`, FADE_STEPS), from, to) as Record<
-    TransitionFadeStyle,
-    string
-  >
+  return createAnsiRampTheme(TRANSITION_FADE_STYLES[source], from, to) as Record<TransitionFadeStyle, string>
 }
 
 function createAnsiActiveTransitionFadeTheme(
@@ -300,7 +313,7 @@ function createAnsiActiveTransitionFadeTheme(
   from: DiagramRgb,
   to: DiagramRgb,
 ): Record<ActiveTransitionFadeStyle, string> {
-  return createAnsiRampTheme(numberedStyleKeys(`${source}ActiveTransitionFade`, FADE_STEPS), from, to) as Record<
+  return createAnsiRampTheme(ACTIVE_TRANSITION_FADE_STYLES[source], from, to) as Record<
     ActiveTransitionFadeStyle,
     string
   >
@@ -333,13 +346,15 @@ function transitionFadeInfo(style: StateCellStyle | undefined): TransitionFadeIn
   return style ? TRANSITION_FADE_INFOS.get(style) : undefined
 }
 
-function createStateActiveTransitionPulseColors(from: RGBA, to: RGBA): Record<ActiveTransitionPulseFadeStyle, RGBA> {
-  return Object.fromEntries(
-    FADE_STEPS.map((step) => [
-      `activeTransitionPulseFade${step}`,
-      blendColor(from, to, step / (FADE_STEPS.length + 1)),
-    ]),
-  ) as Record<ActiveTransitionPulseFadeStyle, RGBA>
+function assignStateFadeColors<Style extends StateCellStyle>(
+  target: Partial<Record<Style, RGBA>>,
+  styles: readonly Style[],
+  from: RGBA,
+  to: RGBA,
+): void {
+  for (const [index, style] of styles.entries()) {
+    target[style] = blendColor(from, to, (index + 1) / (styles.length + 1))
+  }
 }
 
 function styleColor(
@@ -379,7 +394,15 @@ function resolveStateStyleColors(colors: Partial<Record<StateCellStyle, RGBA | u
   const noteText = colors.noteText ?? rgba(DEFAULT_THEME_RGB.noteText)
   const noteConnector = colors.noteConnector ?? noteBorder
 
-  return {
+  const sourceColors = {
+    state,
+    activeState,
+    composite,
+    start,
+    end,
+    choice,
+  } satisfies Record<FadeSourceStyle, RGBA>
+  const styleColors: Partial<Record<StateCellStyle, RGBA>> = {
     state,
     activeState,
     composite,
@@ -393,68 +416,15 @@ function resolveStateStyleColors(colors: Partial<Record<StateCellStyle, RGBA | u
     start,
     end,
     choice,
-    stateTransitionFade1: blendColor(state, transition, 1 / 6),
-    stateTransitionFade2: blendColor(state, transition, 2 / 6),
-    stateTransitionFade3: blendColor(state, transition, 3 / 6),
-    stateTransitionFade4: blendColor(state, transition, 4 / 6),
-    stateTransitionFade5: blendColor(state, transition, 5 / 6),
-    activeStateTransitionFade1: blendColor(activeState, transition, 1 / 6),
-    activeStateTransitionFade2: blendColor(activeState, transition, 2 / 6),
-    activeStateTransitionFade3: blendColor(activeState, transition, 3 / 6),
-    activeStateTransitionFade4: blendColor(activeState, transition, 4 / 6),
-    activeStateTransitionFade5: blendColor(activeState, transition, 5 / 6),
-    compositeTransitionFade1: blendColor(composite, transition, 1 / 6),
-    compositeTransitionFade2: blendColor(composite, transition, 2 / 6),
-    compositeTransitionFade3: blendColor(composite, transition, 3 / 6),
-    compositeTransitionFade4: blendColor(composite, transition, 4 / 6),
-    compositeTransitionFade5: blendColor(composite, transition, 5 / 6),
-    startTransitionFade1: blendColor(start, transition, 1 / 6),
-    startTransitionFade2: blendColor(start, transition, 2 / 6),
-    startTransitionFade3: blendColor(start, transition, 3 / 6),
-    startTransitionFade4: blendColor(start, transition, 4 / 6),
-    startTransitionFade5: blendColor(start, transition, 5 / 6),
-    endTransitionFade1: blendColor(end, transition, 1 / 6),
-    endTransitionFade2: blendColor(end, transition, 2 / 6),
-    endTransitionFade3: blendColor(end, transition, 3 / 6),
-    endTransitionFade4: blendColor(end, transition, 4 / 6),
-    endTransitionFade5: blendColor(end, transition, 5 / 6),
-    choiceTransitionFade1: blendColor(choice, transition, 1 / 6),
-    choiceTransitionFade2: blendColor(choice, transition, 2 / 6),
-    choiceTransitionFade3: blendColor(choice, transition, 3 / 6),
-    choiceTransitionFade4: blendColor(choice, transition, 4 / 6),
-    choiceTransitionFade5: blendColor(choice, transition, 5 / 6),
-    stateActiveTransitionFade1: blendColor(state, activeTransition, 1 / 6),
-    stateActiveTransitionFade2: blendColor(state, activeTransition, 2 / 6),
-    stateActiveTransitionFade3: blendColor(state, activeTransition, 3 / 6),
-    stateActiveTransitionFade4: blendColor(state, activeTransition, 4 / 6),
-    stateActiveTransitionFade5: blendColor(state, activeTransition, 5 / 6),
-    activeStateActiveTransitionFade1: blendColor(activeState, activeTransition, 1 / 6),
-    activeStateActiveTransitionFade2: blendColor(activeState, activeTransition, 2 / 6),
-    activeStateActiveTransitionFade3: blendColor(activeState, activeTransition, 3 / 6),
-    activeStateActiveTransitionFade4: blendColor(activeState, activeTransition, 4 / 6),
-    activeStateActiveTransitionFade5: blendColor(activeState, activeTransition, 5 / 6),
-    compositeActiveTransitionFade1: blendColor(composite, activeTransition, 1 / 6),
-    compositeActiveTransitionFade2: blendColor(composite, activeTransition, 2 / 6),
-    compositeActiveTransitionFade3: blendColor(composite, activeTransition, 3 / 6),
-    compositeActiveTransitionFade4: blendColor(composite, activeTransition, 4 / 6),
-    compositeActiveTransitionFade5: blendColor(composite, activeTransition, 5 / 6),
-    startActiveTransitionFade1: blendColor(start, activeTransition, 1 / 6),
-    startActiveTransitionFade2: blendColor(start, activeTransition, 2 / 6),
-    startActiveTransitionFade3: blendColor(start, activeTransition, 3 / 6),
-    startActiveTransitionFade4: blendColor(start, activeTransition, 4 / 6),
-    startActiveTransitionFade5: blendColor(start, activeTransition, 5 / 6),
-    endActiveTransitionFade1: blendColor(end, activeTransition, 1 / 6),
-    endActiveTransitionFade2: blendColor(end, activeTransition, 2 / 6),
-    endActiveTransitionFade3: blendColor(end, activeTransition, 3 / 6),
-    endActiveTransitionFade4: blendColor(end, activeTransition, 4 / 6),
-    endActiveTransitionFade5: blendColor(end, activeTransition, 5 / 6),
-    choiceActiveTransitionFade1: blendColor(choice, activeTransition, 1 / 6),
-    choiceActiveTransitionFade2: blendColor(choice, activeTransition, 2 / 6),
-    choiceActiveTransitionFade3: blendColor(choice, activeTransition, 3 / 6),
-    choiceActiveTransitionFade4: blendColor(choice, activeTransition, 4 / 6),
-    choiceActiveTransitionFade5: blendColor(choice, activeTransition, 5 / 6),
-    ...createStateActiveTransitionPulseColors(activeTransition, activeTransitionPulse),
   }
+
+  for (const source of FADE_SOURCE_STYLES) {
+    assignStateFadeColors(styleColors, TRANSITION_FADE_STYLES[source], sourceColors[source], transition)
+    assignStateFadeColors(styleColors, ACTIVE_TRANSITION_FADE_STYLES[source], sourceColors[source], activeTransition)
+  }
+  assignStateFadeColors(styleColors, ACTIVE_TRANSITION_PULSE_FADE_STYLES, activeTransition, activeTransitionPulse)
+
+  return styleColors as StateStyleColors
 }
 
 function visualLength(value: string): number {
@@ -482,11 +452,11 @@ function normalizeActiveTransitionMode(
 }
 
 function normalizePulseLength(value: number | undefined): number {
-  return normalizeDiagramPositiveInt(value, DEFAULT_PULSE_LENGTH)
+  return normalizeDiagramPulseLength(value, DEFAULT_PULSE_LENGTH)
 }
 
 function normalizePulseGap(value: number | undefined): number {
-  return normalizeDiagramPositiveInt(value, DEFAULT_PULSE_GAP)
+  return normalizeDiagramPulseGap(value, DEFAULT_PULSE_GAP)
 }
 
 function isMermaidHeader(line: string): boolean {
