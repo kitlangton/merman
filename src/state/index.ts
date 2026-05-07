@@ -1,2 +1,25 @@
-export * from "./diagram.js"
-export * from "./layout.js"
+export type {
+  StateDiagram,
+  StateDiagramActiveTransition,
+  StateDiagramActiveTransitionMode,
+  StateDiagramActiveTransitionSelection,
+  StateDiagramAnsiOptions,
+  StateDiagramAnsiTheme,
+  StateDiagramArrowHeadStyle,
+  StateDiagramCompositeState,
+  StateDiagramDirection,
+  StateDiagramNote,
+  StateDiagramOptions,
+  StateDiagramRenderOptions,
+  StateDiagramState,
+  StateDiagramStateColors,
+  StateDiagramTransition,
+} from "./diagram.js"
+export {
+  isMermaidStateDiagram,
+  parseMermaidStateDiagram,
+  renderStateDiagram,
+  renderStateDiagramAnsi,
+  StateDiagramRenderable,
+  stateDiagramStateColorKey,
+} from "./diagram.js"

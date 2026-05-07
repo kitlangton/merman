@@ -1,5 +1,4 @@
-import { BorderChars, StyledText, RGBA, parseColor, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type TextChunk, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
-import stringWidth from "string-width"
+import { BorderChars, StyledText, RGBA, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type TextChunk, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
 import { ANSI } from "../core/terminal/ansi.js"
 import { DiagramCanvas, type DiagramCanvasCell } from "../core/canvas.js"
 import {
@@ -12,7 +11,7 @@ import {
 import { diagramArrowHead, diagramLineGlyph, drawDiagramFrame, mergeDiagramLineGlyph } from "../core/drawing.js"
 import type { DiagramDirection } from "../core/geometry.js"
 import { diagramPulseStyleLevel, setDiagramPulseCell } from "../core/animation/pulse-cell.js"
-import { setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
+import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
 import {
   normalizeDiagramPositiveInt,
   normalizeDiagramPulseFrame,
@@ -39,6 +38,7 @@ import {
   type StateDiagramNoteBounds as StateNoteBounds,
 } from "./layout.js"
 import { firstMeaningfulMermaidLine, mermaidLines } from "../core/mermaid.js"
+import { diagramTextWidth } from "../core/text.js"
 
 export type StateDiagramDirection = "TB" | "TD" | "LR" | "RL"
 export type StateDiagramArrowHeadStyle = "filled" | "line"
@@ -457,7 +457,7 @@ function resolveStateStyleColors(colors: Partial<Record<StateCellStyle, RGBA | u
 }
 
 function visualLength(value: string): number {
-  return stringWidth(value)
+  return diagramTextWidth(value)
 }
 
 function normalizeDirection(value?: string): StateDiagramDirection {
@@ -1791,19 +1791,19 @@ export class StateDiagramRenderable extends TextBufferRenderable {
     this._activeTransitions = normalizeActiveTransitions(options.activeTransition)
     this._activeTransitionProgress = normalizePulseProgress(options.activeTransitionProgress)
     this._activeTransitionMode = normalizeActiveTransitionMode(options.activeTransitionMode)
-    this._stateColor = options.stateColor ? parseColor(options.stateColor) : undefined
-    this._activeStateColor = options.activeStateColor ? parseColor(options.activeStateColor) : undefined
-    this._compositeColor = options.compositeColor ? parseColor(options.compositeColor) : undefined
-    this._transitionColor = options.transitionColor ? parseColor(options.transitionColor) : undefined
-    this._activeTransitionColor = options.activeTransitionColor ? parseColor(options.activeTransitionColor) : undefined
-    this._pulseColor = options.pulseColor ? parseColor(options.pulseColor) : undefined
-    this._labelColor = options.labelColor ? parseColor(options.labelColor) : undefined
-    this._noteBorderColor = options.noteBorderColor ? parseColor(options.noteBorderColor) : undefined
-    this._noteTextColor = options.noteTextColor ? parseColor(options.noteTextColor) : undefined
-    this._noteConnectorColor = options.noteConnectorColor ? parseColor(options.noteConnectorColor) : undefined
-    this._startColor = options.startColor ? parseColor(options.startColor) : undefined
-    this._endColor = options.endColor ? parseColor(options.endColor) : undefined
-    this._choiceColor = options.choiceColor ? parseColor(options.choiceColor) : undefined
+    this._stateColor = parseDiagramRenderableColor(options.stateColor)
+    this._activeStateColor = parseDiagramRenderableColor(options.activeStateColor)
+    this._compositeColor = parseDiagramRenderableColor(options.compositeColor)
+    this._transitionColor = parseDiagramRenderableColor(options.transitionColor)
+    this._activeTransitionColor = parseDiagramRenderableColor(options.activeTransitionColor)
+    this._pulseColor = parseDiagramRenderableColor(options.pulseColor)
+    this._labelColor = parseDiagramRenderableColor(options.labelColor)
+    this._noteBorderColor = parseDiagramRenderableColor(options.noteBorderColor)
+    this._noteTextColor = parseDiagramRenderableColor(options.noteTextColor)
+    this._noteConnectorColor = parseDiagramRenderableColor(options.noteConnectorColor)
+    this._startColor = parseDiagramRenderableColor(options.startColor)
+    this._endColor = parseDiagramRenderableColor(options.endColor)
+    this._choiceColor = parseDiagramRenderableColor(options.choiceColor)
     this._stateColors = normalizeDiagramColorMap(options.stateColors)
     this._stateBgColors = normalizeDiagramColorMap(options.stateBgColors)
     this._pulseFrame = normalizePulseFrame(options.pulseFrame)

@@ -1,6 +1,6 @@
-import { parseColor, RGBA, TextBufferRenderable, type BorderStyle, type ColorInput, type RenderContext } from "@opentui/core"
+import { RGBA, TextBufferRenderable, type BorderStyle, type ColorInput, type RenderContext } from "@opentui/core"
 import { diagramColorMapsEqual, normalizeDiagramColorMap } from "../core/color/map.js"
-import { setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
+import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
 import { DEFAULT_BORDER_STYLE, renderFlowchartGrid } from "./drawing.js"
 import {
   normalizeFlowchartPulseFrame,
@@ -70,16 +70,16 @@ export class FlowchartDiagramRenderable extends TextBufferRenderable {
     this._borderStyle = options.borderStyle ?? DEFAULT_BORDER_STYLE
     this._minNodeGap = options.minNodeGap
     this._minRankGap = options.minRankGap
-    this._nodeColor = options.nodeColor ? parseColor(options.nodeColor) : undefined
-    this._databaseColor = options.databaseColor ? parseColor(options.databaseColor) : undefined
-    this._edgeColor = options.edgeColor ? parseColor(options.edgeColor) : undefined
-    this._activeNodeColor = options.activeNodeColor ? parseColor(options.activeNodeColor) : undefined
-    this._activeEdgeColor = options.activeEdgeColor ? parseColor(options.activeEdgeColor) : undefined
+    this._nodeColor = parseDiagramRenderableColor(options.nodeColor)
+    this._databaseColor = parseDiagramRenderableColor(options.databaseColor)
+    this._edgeColor = parseDiagramRenderableColor(options.edgeColor)
+    this._activeNodeColor = parseDiagramRenderableColor(options.activeNodeColor)
+    this._activeEdgeColor = parseDiagramRenderableColor(options.activeEdgeColor)
     this._nodeColors = normalizeDiagramColorMap(options.nodeColors)
     this._nodeBgColors = normalizeDiagramColorMap(options.nodeBgColors)
-    this._pulseColor = options.pulseColor ? parseColor(options.pulseColor) : undefined
-    this._labelColor = options.labelColor ? parseColor(options.labelColor) : undefined
-    this._groupColor = options.groupColor ? parseColor(options.groupColor) : undefined
+    this._pulseColor = parseDiagramRenderableColor(options.pulseColor)
+    this._labelColor = parseDiagramRenderableColor(options.labelColor)
+    this._groupColor = parseDiagramRenderableColor(options.groupColor)
     this._pulseFrame = normalizeFlowchartPulseFrame(options.pulseFrame)
     this._pulseProgress = normalizeFlowchartPulseProgress(options.pulseProgress)
     this._activeNode = options.activeNode

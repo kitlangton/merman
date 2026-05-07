@@ -1,8 +1,8 @@
-import { BorderChars, StyledText, parseColor, RGBA, type BorderStyle, type ColorInput, type RenderContext, type TextChunk, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
+import { BorderChars, StyledText, RGBA, type BorderStyle, type ColorInput, type RenderContext, type TextChunk, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
 import { ANSI } from "../core/terminal/ansi.js"
 import { DiagramCanvas } from "../core/canvas.js"
 import { diagramPulseCellStyle, diagramPulseStyleLevel } from "../core/animation/pulse-cell.js"
-import { setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
+import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
 import {
   normalizeDiagramPositiveInt,
   normalizeDiagramPulseFrame,
@@ -1399,14 +1399,14 @@ export class SequenceDiagramRenderable extends TextBufferRenderable {
     this._pulseFrame = normalizePulseFrame(options.pulseFrame)
     this._pulseLength = normalizePulseLength(options.pulseLength)
     this._pulseGap = normalizePulseGap(options.pulseGap)
-    this._participantColor = options.participantColor ? parseColor(options.participantColor) : undefined
-    this._lifelineColor = options.lifelineColor ? parseColor(options.lifelineColor) : undefined
-    this._groupColor = options.groupColor ? parseColor(options.groupColor) : undefined
-    this._requestColor = options.requestColor ? parseColor(options.requestColor) : undefined
-    this._responseColor = options.responseColor ? parseColor(options.responseColor) : undefined
-    this._pulseColor = options.pulseColor ? parseColor(options.pulseColor) : undefined
-    this._noteColor = options.noteColor ? parseColor(options.noteColor) : undefined
-    this._noteBackgroundColor = options.noteBackgroundColor ? parseColor(options.noteBackgroundColor) : undefined
+    this._participantColor = parseDiagramRenderableColor(options.participantColor)
+    this._lifelineColor = parseDiagramRenderableColor(options.lifelineColor)
+    this._groupColor = parseDiagramRenderableColor(options.groupColor)
+    this._requestColor = parseDiagramRenderableColor(options.requestColor)
+    this._responseColor = parseDiagramRenderableColor(options.responseColor)
+    this._pulseColor = parseDiagramRenderableColor(options.pulseColor)
+    this._noteColor = parseDiagramRenderableColor(options.noteColor)
+    this._noteBackgroundColor = parseDiagramRenderableColor(options.noteBackgroundColor)
     this.updateDiagram()
   }
 
