@@ -50,17 +50,12 @@ diagrams as plain text, ANSI-colored output, or a live
 
 > Status: experimental. APIs may shift before `1.0`.
 
-## Install
+- [CLI](#cli)
+- [Library](#library)
 
-As a **library** (use the renderers from your own code):
+## CLI
 
-```sh
-bun add @kitlangton/merman @opentui/core
-# or
-npm install @kitlangton/merman @opentui/core
-```
-
-As a **CLI** (just want `merman` on your `$PATH`):
+Install `merman` globally when you just want diagrams on your `$PATH`:
 
 ```sh
 bun add -g @kitlangton/merman
@@ -68,10 +63,49 @@ bun add -g @kitlangton/merman
 npm install -g @kitlangton/merman
 ```
 
-ESM only. The library requires Node `>=20` (or any current Bun). The `merman`
-CLI is a Bun executable and requires Bun on your `$PATH`.
+Render Mermaid from stdin, a positional argument, or a file:
+
+```sh
+echo "flowchart LR
+  A[Mermaid] --> B[Terminal]
+  B --> C[OpenTUI]" | merman --no-color
+```
+
+```txt
+╭─────────╮          ╭──────────╮          ╭─────────╮
+│ Mermaid ├─────────▶│ Terminal ├─────────▶│ OpenTUI │
+╰─────────╯          ╰──────────╯          ╰─────────╯
+```
+
+More ways to run it:
+
+```sh
+# Read from a file
+merman --file diagram.mmd
+
+# Pick the type explicitly (skips auto-detect)
+merman --kind flowchart --file checkout.mmd
+merman --kind sequence  --file auth.mmd
+merman --kind state     --file form.mmd
+
+# Plain text (no ANSI escapes) for piping into docs
+merman --file diagram.mmd --no-color > rendered.txt
+```
+
+The CLI is shipped as a Bun executable, so Bun must be available on your
+`$PATH`.
 
 ## Library
+
+Install the package with its OpenTUI peer dependency:
+
+```sh
+bun add @kitlangton/merman @opentui/core
+# or
+npm install @kitlangton/merman @opentui/core
+```
+
+ESM only. The library requires Node `>=20` or any current Bun.
 
 `render` takes any Mermaid string — the leading `flowchart`/`sequenceDiagram`/
 `stateDiagram-v2` line picks the right renderer for you.
@@ -154,30 +188,6 @@ renderer.root.add(diagram)
 `Sequence.Renderable` and `State.Renderable` follow the same pattern. Each
 exposes theme setters, active-node/edge highlighting, and a `pulseFrame` for
 animated edge pulses. See the demos in [`examples/`](./examples).
-
-## CLI
-
-`merman` ships a CLI for piping diagrams into the terminal, snapshots, or
-other documents:
-
-```sh
-# Read from stdin (auto-detects diagram type from the first line)
-echo "flowchart LR
-  A --> B" | merman
-
-# Or pass a file
-merman --file diagram.mmd
-
-# Pick the type explicitly (skips auto-detect)
-merman --kind flowchart --file checkout.mmd
-merman --kind sequence  --file auth.mmd
-merman --kind state     --file form.mmd
-
-# Plain text (no ANSI escapes) for piping into docs
-merman --file diagram.mmd --no-color > rendered.txt
-```
-
-Built with Effect v4 primitives and shipped as a Bun executable.
 
 ## React
 
