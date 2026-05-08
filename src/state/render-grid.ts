@@ -36,5 +36,7 @@ export function renderStateGridStyledText(
 
 export function renderStateGridAnsi(grid: StateGrid, theme: StateDiagramAnsiTheme = {}): string {
   const resolved = resolveStateAnsiTheme(theme)
-  return renderDiagramGridAnsi(grid, (run) => (run.style ? resolved[run.style] : undefined), { trimBottom: true })
+  return renderDiagramGridAnsi(grid, (run) => (run.style ? resolved[run.style] : undefined), {
+    trimBottom: true,
+  })
 }

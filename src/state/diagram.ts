@@ -1,10 +1,14 @@
-import { BorderChars, type BorderCharacters, type BorderStyle, type ColorInput, type RenderContext, type RGBA, TextBufferRenderable } from "@opentui/core"
-import { DiagramCanvas, type DiagramCanvasCell } from "../core/canvas.js"
 import {
-  diagramColorMapsEqual,
-  diagramRadialCellColorLevel,
-  normalizeDiagramColorMap,
-} from "../core/color/map.js"
+  BorderChars,
+  type BorderCharacters,
+  type BorderStyle,
+  type ColorInput,
+  type RenderContext,
+  type RGBA,
+  TextBufferRenderable,
+} from "@opentui/core"
+import { DiagramCanvas, type DiagramCanvasCell } from "../core/canvas.js"
+import { diagramColorMapsEqual, diagramRadialCellColorLevel, normalizeDiagramColorMap } from "../core/color/map.js"
 import { diagramArrowHead, diagramLineGlyph, drawDiagramFrame, mergeDiagramLineGlyph } from "../core/drawing.js"
 import type { DiagramDirection } from "../core/geometry.js"
 import { setDiagramPulseCell } from "../core/animation/pulse-cell.js"
@@ -62,7 +66,6 @@ import type {
   StateDiagramActiveTransitionMode,
   StateDiagramActiveTransitionSelection,
   StateDiagramAnsiOptions,
-  StateDiagramAnsiTheme,
   StateDiagramArrowHeadStyle,
   StateDiagramDirection,
   StateDiagramOptions,
@@ -223,7 +226,10 @@ function collapseHiddenCompositeMarkerTransitionsOnce(
     }
   }
 
-  return { transitions: [...transitions.filter((transition) => !skipped.has(transition)), ...collapsed], changed }
+  return {
+    transitions: [...transitions.filter((transition) => !skipped.has(transition)), ...collapsed],
+    changed,
+  }
 }
 
 function collapseHiddenCompositeMarkerTransitions(diagram: StateDiagram): StateDiagramRenderTransition[] {
@@ -955,7 +961,9 @@ function layoutStateDiagram(content: string, options: StateDiagramRenderOptions 
   const activeTransitionProgress = normalizeStatePulseProgress(options.activeTransitionProgress)
   const activeTransitionMode = normalizeActiveTransitionMode(options.activeTransitionMode)
   const activeTransitions = normalizeActiveTransitions(options.activeTransition)
-  const { bounds, sizes, compositeBounds, noteBounds } = createStateDiagramLayout(diagram, { minStateGap })
+  const { bounds, sizes, compositeBounds, noteBounds } = createStateDiagramLayout(diagram, {
+    minStateGap,
+  })
   const statesById = new Map(diagram.states.map((state) => [state.id, state]))
   let allBounds = [...bounds.values(), ...noteBounds]
   let maxY = Math.max(0, ...allBounds.map((bound) => bound.top + bound.height))

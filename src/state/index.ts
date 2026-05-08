@@ -1,24 +1,37 @@
+import { renderStateDiagram, renderStateDiagramAnsi } from "./diagram.js"
+import type { StateDiagramAnsiOptions, StateDiagramRenderOptions } from "./types.js"
+
 export type {
-  StateDiagram,
-  StateDiagramActiveTransition,
-  StateDiagramActiveTransitionMode,
-  StateDiagramActiveTransitionSelection,
-  StateDiagramAnsiOptions,
-  StateDiagramAnsiTheme,
-  StateDiagramArrowHeadStyle,
-  StateDiagramCompositeState,
-  StateDiagramDirection,
-  StateDiagramNote,
-  StateDiagramOptions,
-  StateDiagramRenderOptions,
-  StateDiagramState,
-  StateDiagramStateColors,
-  StateDiagramTransition,
+  StateDiagram as Diagram,
+  StateDiagramActiveTransition as ActiveTransition,
+  StateDiagramActiveTransitionMode as ActiveTransitionMode,
+  StateDiagramActiveTransitionSelection as ActiveTransitionSelection,
+  StateDiagramAnsiOptions as AnsiRenderOptions,
+  StateDiagramAnsiTheme as Theme,
+  StateDiagramArrowHeadStyle as ArrowHeadStyle,
+  StateDiagramCompositeState as CompositeState,
+  StateDiagramDirection as Direction,
+  StateDiagramNote as Note,
+  StateDiagramOptions as RenderableOptions,
+  StateDiagramRenderOptions as PlainRenderOptions,
+  StateDiagramState as State,
+  StateDiagramStateColors as StateColors,
+  StateDiagramTransition as Transition,
 } from "./types.js"
-export { isMermaidStateDiagram, parseMermaidStateDiagram } from "./parser.js"
-export {
-  renderStateDiagram,
-  renderStateDiagramAnsi,
-  StateDiagramRenderable,
-  stateDiagramStateColorKey,
-} from "./diagram.js"
+export { isMermaidStateDiagram as is, parseMermaidStateDiagram as parse } from "./parser.js"
+export { StateDiagramRenderable as Renderable, stateDiagramStateColorKey as stateColorKey } from "./diagram.js"
+
+export interface RenderOptions extends StateDiagramAnsiOptions {
+  /** Emit ANSI color escapes. Default: `true`. Pass `false` for plain text. */
+  color?: boolean
+}
+
+/**
+ * Render a Mermaid state diagram string for the terminal.
+ *
+ * Defaults to ANSI-colored output. Pass `{ color: false }` for plain text.
+ */
+export function render(content: string, options: RenderOptions = {}): string {
+  const { color = true, ...rest } = options
+  return color ? renderStateDiagramAnsi(content, rest) : renderStateDiagram(content, rest as StateDiagramRenderOptions)
+}

@@ -69,7 +69,11 @@ stateDiagram-v2
   [*] --> WaitingPayment
 `)
 
-    expect(diagram.states).toContainEqual({ id: "WaitingPayment", label: "Waiting<br/>for Payment", kind: "state" })
+    expect(diagram.states).toContainEqual({
+      id: "WaitingPayment",
+      label: "Waiting<br/>for Payment",
+      kind: "state",
+    })
   })
 
   test("parses choice pseudo-states", () => {
@@ -96,7 +100,12 @@ stateDiagram-v2
 `)
 
     expect(diagram.composites).toContainEqual({ id: "Authenticated", label: "Authenticated" })
-    expect(diagram.states).toContainEqual({ id: "Idle", label: "Idle", kind: "state", parentId: "Authenticated" })
+    expect(diagram.states).toContainEqual({
+      id: "Idle",
+      label: "Idle",
+      kind: "state",
+      parentId: "Authenticated",
+    })
     expect(diagram.states).toContainEqual({
       id: "Authenticated.__start",
       label: "●",
@@ -296,8 +305,16 @@ stateDiagram-v2
     const diagram = parseMermaidStateDiagram(content)
     const output = renderStateDiagram(content)
 
-    expect(diagram.transitions).toContainEqual({ from: "__start", to: "Authenticated.__start", label: "login" })
-    expect(diagram.transitions).toContainEqual({ from: "Authenticated.__end", to: "__end", label: "logout" })
+    expect(diagram.transitions).toContainEqual({
+      from: "__start",
+      to: "Authenticated.__start",
+      label: "login",
+    })
+    expect(diagram.transitions).toContainEqual({
+      from: "Authenticated.__end",
+      to: "__end",
+      label: "logout",
+    })
     expect(output).toMatchInlineSnapshot(`
       "            ╭─ Authenticated ──────────────────╮
                   │                                  │

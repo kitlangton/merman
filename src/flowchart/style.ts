@@ -168,5 +168,7 @@ export function renderGridStyledText(
 
 export function renderGridAnsi(grid: FlowchartGrid, theme: FlowchartDiagramAnsiTheme = {}): string {
   const resolved = { ...DEFAULT_ANSI_THEME, ...theme }
-  return renderDiagramGridAnsi(grid, (run) => (run.style ? resolved[run.style] : undefined), { trimBottom: true })
+  return renderDiagramGridAnsi(grid, (run) => (run.style ? resolved[run.style] : undefined), {
+    trimBottom: true,
+  })
 }

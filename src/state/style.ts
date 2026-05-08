@@ -109,16 +109,25 @@ function stateDefaultAnsiTheme(): Required<Record<StateCellStyle, string>> {
       DEFAULT_THEME_RGB.activeState,
       DEFAULT_THEME_RGB.activeTransition,
     ),
-    ...createAnsiActiveTransitionFadeTheme("composite", DEFAULT_THEME_RGB.composite, DEFAULT_THEME_RGB.activeTransition),
+    ...createAnsiActiveTransitionFadeTheme(
+      "composite",
+      DEFAULT_THEME_RGB.composite,
+      DEFAULT_THEME_RGB.activeTransition,
+    ),
     ...createAnsiActiveTransitionFadeTheme("start", DEFAULT_THEME_RGB.start, DEFAULT_THEME_RGB.activeTransition),
     ...createAnsiActiveTransitionFadeTheme("end", DEFAULT_THEME_RGB.end, DEFAULT_THEME_RGB.activeTransition),
     ...createAnsiActiveTransitionFadeTheme("choice", DEFAULT_THEME_RGB.choice, DEFAULT_THEME_RGB.activeTransition),
-    ...createAnsiActiveTransitionPulseTheme(DEFAULT_THEME_RGB.activeTransition, DEFAULT_THEME_RGB.activeTransitionPulse),
+    ...createAnsiActiveTransitionPulseTheme(
+      DEFAULT_THEME_RGB.activeTransition,
+      DEFAULT_THEME_RGB.activeTransitionPulse,
+    ),
   }
   return defaultAnsiTheme
 }
 
-export function resolveStateAnsiTheme(theme: Partial<Record<StateCellStyle, string>> = {}): Record<StateCellStyle, string> {
+export function resolveStateAnsiTheme(
+  theme: Partial<Record<StateCellStyle, string>> = {},
+): Record<StateCellStyle, string> {
   return { ...stateDefaultAnsiTheme(), ...theme }
 }
 
@@ -173,7 +182,10 @@ export function stateDiagramStateColorKey(stateId: string, level: number): strin
   return diagramCellColorKey(stateId, level)
 }
 
-function stateMappedColor(colors: ReadonlyMap<string, RGBA> | undefined, stateId: string | undefined): RGBA | undefined {
+function stateMappedColor(
+  colors: ReadonlyMap<string, RGBA> | undefined,
+  stateId: string | undefined,
+): RGBA | undefined {
   return mappedDiagramColor(colors, stateId)
 }
 

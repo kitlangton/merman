@@ -1,19 +1,5 @@
-import {
-  type CliRenderer,
-  createCliRenderer,
-  type KeyEvent,
-  parseColor,
-  RGBA,
-  ScrollBoxRenderable,
-  TextRenderable,
-} from "@opentui/core"
-import {
-  flowchartNodeColorKey,
-  type FlowchartActiveEdgeSelection,
-  FlowchartDiagramRenderable,
-  renderFlowchartDiagram,
-  renderFlowchartDiagramAnsi,
-} from "opentui-diagrams"
+import { type CliRenderer, createCliRenderer, type KeyEvent, parseColor, RGBA } from "@opentui/core"
+import { Flowchart } from "@kitlangton/merman"
 import {
   animationNow,
   clamp01,
@@ -22,6 +8,8 @@ import {
   easeOutCubic,
   mixColor,
 } from "./lib/diagram-animation.js"
+import { type FooterEntry } from "./lib/demo-footer.js"
+import { DemoShell, type DemoShellTheme } from "./lib/demo-shell.js"
 import { setupCommonDemoKeys } from "./lib/standalone-keys.js"
 
 export const SKETCH_FLOWCHART = `flowchart LR
@@ -203,22 +191,17 @@ const THEMES: FlowchartTheme[] = [
   },
 ]
 
-let diagram: FlowchartDiagramRenderable | undefined
-let scrollBox: ScrollBoxRenderable | undefined
-let footer: TextRenderable | undefined
-let exampleIndex = Math.max(
-  0,
-  EXAMPLES.findIndex((example) => example.title === "Hey Jude"),
-)
+let diagram: Flowchart.Renderable | undefined
+let shell: DemoShell | undefined
+let exampleIndex = 0
 let themeIndex = 0
 let activeRenderer: CliRenderer | undefined
 let keyHandler: ((key: KeyEvent) => void) | undefined
-let resizeHandler: (() => void) | undefined
 let animationTimer: ReturnType<typeof setInterval> | undefined
 let lastPulseStepAt = 0
 let currentThemeColors: ParsedFlowchartTheme | undefined
 let themeTransition: { from: ParsedFlowchartTheme; to: ParsedFlowchartTheme; startedAt: number } | undefined
-let followTransition: { edge: FlowchartActiveEdgeSelection; startedAt: number } | undefined
+let followTransition: { edge: Flowchart.ActiveEdgeSelection; startedAt: number } | undefined
 let edgeReleaseTransition: { startedAt: number } | undefined
 let previousActiveNode: string | undefined
 let activeNodeFlashPending = false
@@ -232,7 +215,6 @@ const ANIMATION_INTERVAL_MS = 16
 const PULSE_STEP_MS = 60
 const DEMO_PULSE_LENGTH = 9
 const DEMO_PULSE_GAP = 22
-const SCROLLBOX_PADDING = 1
 
 function cancelEdgeTransitions(): void {
   followTransition = undefined
@@ -314,7 +296,7 @@ function animatedNodeColors(colors: ParsedFlowchartTheme, now = animationNow()):
     activeColor: colors.activeNode,
     activeNeutralColor: colors.node,
     pulseColor: colors.pulse,
-    keyForLevel: flowchartNodeColorKey,
+    keyForLevel: Flowchart.nodeColorKey,
   })
 }
 
@@ -334,7 +316,7 @@ function activeNodeBackgroundColors(
     progress,
     backgroundColor: colors.background,
     pulseColor: colors.pulse,
-    keyForLevel: flowchartNodeColorKey,
+    keyForLevel: Flowchart.nodeColorKey,
   })
 }
 
@@ -357,13 +339,18 @@ function hasAnimatedColors(): boolean {
   return Boolean(followTransition || edgeReleaseTransition || previousActiveNode || activeNodeFlashPending)
 }
 
-function applyThemeColors(renderer: CliRenderer, colors: ParsedFlowchartTheme): void {
-  renderer.setBackgroundColor(colors.background)
-  if (scrollBox) {
-    scrollBox.backgroundColor = colors.background
-    scrollBox.viewport.backgroundColor = colors.background
-    scrollBox.content.backgroundColor = colors.background
+function shellThemeFor(colors: ParsedFlowchartTheme): DemoShellTheme {
+  return {
+    background: colors.background,
+    titleColor: colors.foreground,
+    kindColor: colors.footer,
+    keyColor: colors.foreground,
+    labelColor: colors.footer,
   }
+}
+
+function applyThemeColors(_renderer: CliRenderer, colors: ParsedFlowchartTheme): void {
+  shell?.setTheme(shellThemeFor(colors))
   if (diagram) {
     const currentDiagram = diagram
     currentDiagram.batchUpdate(() => {
@@ -379,7 +366,6 @@ function applyThemeColors(renderer: CliRenderer, colors: ParsedFlowchartTheme): 
       currentDiagram.groupColor = colors.group
     })
   }
-  if (footer) footer.fg = colors.footer
   currentThemeColors = colors
 }
 
@@ -403,6 +389,13 @@ function tickPulse(now: number): void {
 }
 
 function tickAnimations(renderer: CliRenderer): void {
+  if (!diagram || diagram.isDestroyed) {
+    if (animationTimer) {
+      clearInterval(animationTimer)
+      animationTimer = undefined
+    }
+    return
+  }
   const now = animationNow()
   tickPulse(now)
 
@@ -449,32 +442,8 @@ function tickAnimations(renderer: CliRenderer): void {
   if (hasAnimatedColors()) applyAnimatedColors(now)
 }
 
-function sizeDiagram(): void {
-  if (!diagram) return
-  diagram.width = diagram.renderedWidth
-  diagram.height = diagram.renderedHeight
-}
-
-function centerDiagramInViewport(renderer: CliRenderer = activeRenderer!): void {
-  if (!diagram || !scrollBox) return
-  const viewportWidth = Math.max(scrollBox.viewport.width, renderer.width)
-  const viewportHeight = Math.max(scrollBox.viewport.height, Math.max(1, renderer.height - 1))
-  diagram.marginLeft = Math.max(SCROLLBOX_PADDING, Math.floor((viewportWidth - diagram.renderedWidth) / 2))
-  diagram.marginTop = Math.max(SCROLLBOX_PADDING, Math.floor((viewportHeight - diagram.renderedHeight) / 2))
-  diagram.marginRight = SCROLLBOX_PADDING
-  diagram.marginBottom = SCROLLBOX_PADDING
-}
-
-function resizeSurface(renderer: CliRenderer = activeRenderer!): void {
-  if (scrollBox) {
-    scrollBox.width = renderer.width
-    scrollBox.height = Math.max(1, renderer.height - 1)
-    centerDiagramInViewport(renderer)
-  }
-  if (footer) {
-    footer.top = Math.max(0, renderer.height - 1)
-    footer.width = renderer.width
-  }
+function diagramSize(): { width: number; height: number } {
+  return { width: diagram?.renderedWidth ?? 0, height: diagram?.renderedHeight ?? 0 }
 }
 
 function applyTheme(renderer: CliRenderer = activeRenderer!): void {
@@ -484,15 +453,20 @@ function applyTheme(renderer: CliRenderer = activeRenderer!): void {
   updateFooter()
 }
 
+function updateHeader(): void {
+  shell?.setTitle(EXAMPLES[exampleIndex]!.title)
+  shell?.setStep(exampleIndex, EXAMPLES.length)
+}
+
 function updateFooter(): void {
-  if (!footer) return
-  const example = EXAMPLES[exampleIndex]!
-  const theme = THEMES[themeIndex]!
-  const selected = diagram?.selectedConnection
-  const active = diagram?.activeNode
-    ? ` · active: ${diagram.activeNode}${selected ? ` → ${selected.to}` : ""}`
-    : " · Enter focus"
-  footer.content = `${example.title} · ${theme.name}${active} · Tab/Shift-Tab connection · Enter follow · arrows/HJKL scroll · N/P example · 1-${EXAMPLES.length} jump · T theme · Esc quit`
+  const entries: FooterEntry[] = [
+    { keys: "Tab", label: "connection" },
+    { keys: "Enter", label: diagram?.activeNode ? "follow" : "focus" },
+    { keys: "←/→", label: "example" },
+    { keys: "T", label: "theme" },
+    { keys: "Esc", label: "back" },
+  ]
+  shell?.setFooterEntries(entries)
 }
 
 function updateDiagram(): void {
@@ -503,43 +477,32 @@ function updateDiagram(): void {
   diagram.activeEdgeProgress = undefined
   diagram.nodeColors = undefined
   diagram.nodeBgColors = undefined
-  sizeDiagram()
-  centerDiagramInViewport()
-  scrollBox?.scrollTo({ x: 0, y: 0 })
+  shell?.recenter()
+  shell?.scrollToOrigin()
+  updateHeader()
   updateFooter()
+}
+
+function selectExample(nextExampleIndex: number): void {
+  exampleIndex = (nextExampleIndex + EXAMPLES.length) % EXAMPLES.length
+  updateDiagram()
 }
 
 export function run(renderer: CliRenderer): void {
   activeRenderer = renderer
+  exampleIndex = 0
   const theme = THEMES[themeIndex]!
   currentThemeColors = parsedTheme(theme)
   const example = EXAMPLES[exampleIndex]!
-  renderer.setBackgroundColor(currentThemeColors.background)
 
-  scrollBox = new ScrollBoxRenderable(renderer, {
-    id: "flowchart-scrollbox",
-    position: "absolute",
-    left: 0,
-    top: 0,
-    width: renderer.width,
-    height: Math.max(1, renderer.height - 1),
-    scrollX: true,
-    scrollY: true,
-    rootOptions: {
-      border: false,
-      backgroundColor: currentThemeColors.background,
-    },
-    viewportOptions: {
-      backgroundColor: currentThemeColors.background,
-    },
-    contentOptions: {
-      backgroundColor: currentThemeColors.background,
-      minHeight: 0,
-    },
+  shell = new DemoShell(renderer, {
+    id: "flowchart-demo",
+    kind: "flowchart",
+    theme: shellThemeFor(currentThemeColors),
   })
 
-  diagram = new FlowchartDiagramRenderable(renderer, {
-    id: "flowchart-demo",
+  diagram = new Flowchart.Renderable(renderer, {
+    id: "flowchart-diagram",
     content: example.content,
     fg: currentThemeColors.foreground,
     bg: currentThemeColors.background,
@@ -555,40 +518,19 @@ export function run(renderer: CliRenderer): void {
     pulseLength: DEMO_PULSE_LENGTH,
     pulseGap: DEMO_PULSE_GAP,
   })
+  diagram.selectable = false
   lastPulseStepAt = animationNow()
   ensureAnimationTimer(renderer)
-  sizeDiagram()
-  centerDiagramInViewport(renderer)
-  scrollBox.add(diagram)
-  renderer.root.add(scrollBox)
-
-  footer = new TextRenderable(renderer, {
-    id: "flowchart-footer",
-    content: "",
-    position: "absolute",
-    left: 0,
-    top: Math.max(0, renderer.height - 1),
-    width: renderer.width,
-    fg: currentThemeColors.footer,
-    truncate: true,
-  })
-  renderer.root.add(footer)
+  shell.mount({ renderable: diagram, getSize: diagramSize })
+  shell.focus()
+  updateHeader()
   updateFooter()
-  scrollBox.focus()
 
   keyHandler = (key) => {
-    if (key.name === "n") {
-      exampleIndex = (exampleIndex + 1) % EXAMPLES.length
-      updateDiagram()
-    } else if (key.name === "p") {
-      exampleIndex = (exampleIndex - 1 + EXAMPLES.length) % EXAMPLES.length
-      updateDiagram()
-    } else if (/^[1-9]$/.test(key.name)) {
-      const nextExampleIndex = Number(key.name) - 1
-      if (nextExampleIndex < EXAMPLES.length) {
-        exampleIndex = nextExampleIndex
-        updateDiagram()
-      }
+    if (key.name === "right" || key.name === "arrowright") {
+      selectExample(exampleIndex + 1)
+    } else if (key.name === "left" || key.name === "arrowleft") {
+      selectExample(exampleIndex - 1)
     } else if (key.name === "t") {
       themeIndex = (themeIndex + 1) % THEMES.length
       applyTheme(renderer)
@@ -620,23 +562,17 @@ export function run(renderer: CliRenderer): void {
   }
   renderer.keyInput.on("keypress", keyHandler)
 
-  resizeHandler = () => resizeSurface(renderer)
-  renderer.on("resize", resizeHandler)
   setupCommonDemoKeys(renderer)
 }
 
 export function destroy(renderer: CliRenderer): void {
   if (animationTimer) clearInterval(animationTimer)
   if (keyHandler) renderer.keyInput.off("keypress", keyHandler)
-  if (resizeHandler) renderer.off("resize", resizeHandler)
-  scrollBox?.destroyRecursively()
-  footer?.destroyRecursively()
+  shell?.destroy()
   diagram = undefined
-  scrollBox = undefined
-  footer = undefined
+  shell = undefined
   activeRenderer = undefined
   keyHandler = undefined
-  resizeHandler = undefined
   animationTimer = undefined
   lastPulseStepAt = 0
   themeTransition = undefined
@@ -654,7 +590,7 @@ if (import.meta.main) {
     )
     const plain = process.argv.includes("--plain")
     const content = EXAMPLES[index]!.content
-    process.stdout.write(plain ? renderFlowchartDiagram(content) : renderFlowchartDiagramAnsi(content))
+    process.stdout.write(Flowchart.render(content, { color: !plain }))
   } else {
     const renderer = await createCliRenderer({ targetFps: 30 })
     run(renderer)

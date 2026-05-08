@@ -1,0 +1,89 @@
+name: Release
+
+# Publishes to npm via Trusted Publisher OIDC.
+#
+# One-time setup on npmjs.com:
+#   Package settings -> Trusted Publishers -> GitHub Actions
+#   owner: kitlangton
+#   repository: merman
+#   workflow filename: release.yml
+#
+# To release: bump `version` in package.json, commit, then push a `vX.Y.Z` tag:
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# A GitHub Release is also created from the tag, which is harmless if you
+# prefer to manage releases manually afterwards.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (must already exist, e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@kitlangton/merman
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm (Trusted Publishers requires recent npm)
+        run: npm install -g npm@latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG_VERSION" ]; then
+            echo "Tag $TAG does not match package.json version $PKG_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+      - name: Validate package
+        run: |
+          bunx publint
+          bunx attw --pack . --profile esm-only
+
+      - name: Publish
+        run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true

@@ -5,17 +5,10 @@ import { blendColor, colorsEqual, DIAGRAM_FADE_STEPS } from "../core/color/style
 import { expectDiagram } from "../test/diagram.js"
 import { renderFlowchartGrid } from "./drawing.js"
 import { flowchartNodeColorKey, renderGridStyledText, resolveFlowchartStyleColors } from "./style.js"
-import {
-  DEFAULT_MIN_RANK_GAP,
-  DEFAULT_MIN_VERTICAL_RANK_GAP,
-  layoutFlowchartDiagram,
-} from "./layout.js"
-import {
-  FlowchartDiagramRenderable,
-  parseMermaidFlowchartDiagram,
-  renderFlowchartDiagram,
-  renderFlowchartDiagramAnsi,
-} from "./index.js"
+import { DEFAULT_MIN_RANK_GAP, DEFAULT_MIN_VERTICAL_RANK_GAP, layoutFlowchartDiagram } from "./layout.js"
+import { parseMermaidFlowchartDiagram } from "./parser.js"
+import { renderFlowchartDiagram, renderFlowchartDiagramAnsi } from "./render.js"
+import { FlowchartDiagramRenderable } from "./renderable.js"
 
 function flowchartTextSize(content: string): { width: number; height: number } {
   return renderFlowchartGrid(content).getTextSize({ trimBottom: true })
@@ -729,14 +722,20 @@ flowchart LR
   })
 
   test("lets pulses start at source connectors", () => {
-    const grid = renderFlowchartGrid("flowchart TD\n  A[A] ==> B[B]", { pulseProgress: 0, pulseLength: 5 })
+    const grid = renderFlowchartGrid("flowchart TD\n  A[A] ==> B[B]", {
+      pulseProgress: 0,
+      pulseLength: 5,
+    })
     const sourceConnector = [...grid.rows.flatMap((row) => row)].find((cell) => cell?.char === "┬")
 
     expect(sourceConnector?.style).toBe("edgePulseFade1")
   })
 
   test("applies renderable pulse color separately from edge color", async () => {
-    const { renderer, renderOnce, captureSpans } = await createTestRenderer({ width: 60, height: 8 })
+    const { renderer, renderOnce, captureSpans } = await createTestRenderer({
+      width: 60,
+      height: 8,
+    })
     const pulseColor = parseColor("#f8fafc")
     const edgeColor = parseColor("#38bdf8")
     const diagram = new FlowchartDiagramRenderable(renderer, {
@@ -761,7 +760,10 @@ flowchart LR
   })
 
   test("lets pulses travel through inline edge labels", async () => {
-    const { renderer, renderOnce, captureSpans } = await createTestRenderer({ width: 90, height: 8 })
+    const { renderer, renderOnce, captureSpans } = await createTestRenderer({
+      width: 90,
+      height: 8,
+    })
     const pulseColor = parseColor("#f8fafc")
     const labelColor = parseColor("#86e1c8")
     const diagram = new FlowchartDiagramRenderable(renderer, {
@@ -784,7 +786,10 @@ flowchart LR
   })
 
   test("applies renderable group color separately from edges", async () => {
-    const { renderer, renderOnce, captureSpans } = await createTestRenderer({ width: 80, height: 12 })
+    const { renderer, renderOnce, captureSpans } = await createTestRenderer({
+      width: 80,
+      height: 12,
+    })
     const groupColor = parseColor("#123456")
     const edgeColor = parseColor("#abcdef")
     const diagram = new FlowchartDiagramRenderable(renderer, {
@@ -810,7 +815,10 @@ flowchart LR
   })
 
   test("updates renderable content and colors", async () => {
-    const { renderer, renderOnce, captureCharFrame, captureSpans } = await createTestRenderer({ width: 60, height: 16 })
+    const { renderer, renderOnce, captureCharFrame, captureSpans } = await createTestRenderer({
+      width: 60,
+      height: 16,
+    })
     const initialContent = "flowchart LR\n  A --> B"
     const diagram = new FlowchartDiagramRenderable(renderer, {
       id: "flowchart",

@@ -67,7 +67,14 @@ export function point(x: number, y: number): DiagramPoint {
 }
 
 export function diagramBoundsFromRect(left: number, top: number, width: number, height: number): DiagramBounds {
-  return { left, top, width, height, centerX: left + Math.floor(width / 2), centerY: top + Math.floor(height / 2) }
+  return {
+    left,
+    top,
+    width,
+    height,
+    centerX: left + Math.floor(width / 2),
+    centerY: top + Math.floor(height / 2),
+  }
 }
 
 export function translateDiagramBounds(bounds: DiagramBounds, dx: number, dy: number): void {

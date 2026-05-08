@@ -78,7 +78,11 @@ describe("diagram style helpers", () => {
   test("normalizes and resolves leveled diagram color maps", () => {
     const red = RGBA.fromInts(255, 0, 0, 255)
     const blue = RGBA.fromInts(0, 0, 255, 255)
-    const colors = normalizeDiagramColorMap({ A: red, B: undefined, [diagramCellColorKey("C", 2)]: blue })
+    const colors = normalizeDiagramColorMap({
+      A: red,
+      B: undefined,
+      [diagramCellColorKey("C", 2)]: blue,
+    })
 
     expect(colors.size).toBe(2)
     expect(diagramCellColorKey("A", -1)).toBe("A::cell:0")

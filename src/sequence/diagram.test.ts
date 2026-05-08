@@ -107,16 +107,31 @@ sequenceDiagram
     expect(diagram.steps).toEqual([
       {
         type: "message",
-        message: { from: "Browser", to: "Server", label: "request", style: "solid", activate: "Server" },
+        message: {
+          from: "Browser",
+          to: "Server",
+          label: "request",
+          style: "solid",
+          activate: "Server",
+        },
       },
       { type: "fragment", fragment: { kind: "alt", label: "accepted" } },
       {
         type: "message",
-        message: { from: "Server", to: "Browser", label: "response", style: "dashed", deactivate: "Server" },
+        message: {
+          from: "Server",
+          to: "Browser",
+          label: "response",
+          style: "dashed",
+          deactivate: "Server",
+        },
       },
       { type: "fragment", fragment: { kind: "else", label: "rejected" } },
       { type: "activation", activation: { participant: "Server", active: true } },
-      { type: "message", message: { from: "Server", to: "Browser", label: "error", style: "dashed" } },
+      {
+        type: "message",
+        message: { from: "Server", to: "Browser", label: "error", style: "dashed" },
+      },
       { type: "activation", activation: { participant: "Server", active: false } },
       { type: "fragment", fragment: { kind: "end", label: "alt" } },
     ])
@@ -298,7 +313,10 @@ sequenceDiagram
   end
 `)
 
-    expect(diagram.steps[0]).toEqual({ type: "fragment", fragment: { kind: "loop", label: "retry up to 3x" } })
+    expect(diagram.steps[0]).toEqual({
+      type: "fragment",
+      fragment: { kind: "loop", label: "retry up to 3x" },
+    })
     expect(output).toContain("╭─ ↻ loop: retry up to 3x")
     expect(output).not.toContain("end loop")
     expect(output.indexOf("loop: retry up to 3x")).toBeLessThan(output.indexOf("GET /users/42"))
@@ -327,7 +345,10 @@ sequenceDiagram
       { label: "Purple Literal Label", participantIds: ["Worker"] },
     ])
     expect(diagram.steps).toEqual([
-      { type: "message", message: { from: "Browser", to: "API", label: "request", style: "solid" } },
+      {
+        type: "message",
+        message: { from: "Browser", to: "API", label: "request", style: "solid" },
+      },
     ])
   })
 

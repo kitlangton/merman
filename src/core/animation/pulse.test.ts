@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  normalizeDiagramPositiveInt,
-  normalizeDiagramPulseFrame,
-  normalizeDiagramPulseProgress,
-} from "./pulse.js"
+import { normalizeDiagramPositiveInt, normalizeDiagramPulseFrame, normalizeDiagramPulseProgress } from "./pulse.js"
 
 describe("diagram pulse helpers", () => {
   test("normalizes pulse frame values", () => {

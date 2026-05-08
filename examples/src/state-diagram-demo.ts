@@ -1,20 +1,5 @@
-import {
-  type CliRenderer,
-  createCliRenderer,
-  type KeyEvent,
-  parseColor,
-  RGBA,
-  TextRenderable,
-} from "@opentui/core"
-import {
-  parseMermaidStateDiagram,
-  renderStateDiagram,
-  renderStateDiagramAnsi,
-  stateDiagramStateColorKey,
-  type StateDiagram,
-  type StateDiagramActiveTransition,
-  StateDiagramRenderable,
-} from "opentui-diagrams"
+import { type CliRenderer, createCliRenderer, type KeyEvent, parseColor, RGBA } from "@opentui/core"
+import { State } from "@kitlangton/merman"
 import {
   animationNow,
   clamp01,
@@ -23,6 +8,8 @@ import {
   easeOutCubic,
   mixColor,
 } from "./lib/diagram-animation.js"
+import { type FooterEntry } from "./lib/demo-footer.js"
+import { DemoShell, type DemoShellTheme } from "./lib/demo-shell.js"
 import { setupCommonDemoKeys } from "./lib/standalone-keys.js"
 
 export const REQUEST_STATE_DIAGRAM = `stateDiagram-v2
@@ -114,11 +101,11 @@ interface StateDiagramExample {
 interface SelectableTransition {
   label: string
   to: string
-  path: StateDiagramActiveTransition[]
+  path: State.ActiveTransition[]
 }
 
 function renderedSize(content: string): { width: number; height: number } {
-  const lines = renderStateDiagram(content).split("\n")
+  const lines = State.render(content, { color: false }).split("\n")
   return {
     width: Math.max(0, ...lines.map((line) => line.length)),
     height: lines.length,
@@ -230,16 +217,15 @@ const THEMES: StateDiagramTheme[] = [
 
 const parsedThemeColorCache = new WeakMap<StateDiagramTheme, ParsedThemeColors>()
 
-let diagram: StateDiagramRenderable | undefined
-let footer: TextRenderable | undefined
+let diagram: State.Renderable | undefined
+let shell: DemoShell | undefined
 let exampleIndex = 0
 let themeIndex = 0
-let parsedDiagram = parseMermaidStateDiagram(EXAMPLES[exampleIndex]!.content)
+let parsedDiagram = State.parse(EXAMPLES[exampleIndex]!.content)
 let activeState: string | undefined
 let previousActiveState: string | undefined
 let activeTransitionIndex = 0
 let activeRenderer: CliRenderer | undefined
-let resizeHandler: ((width: number, height: number) => void) | undefined
 let keyHandler: ((key: KeyEvent) => void) | undefined
 let animationTimer: ReturnType<typeof setInterval> | undefined
 let transitionAnimationStartedAt = 0
@@ -257,27 +243,27 @@ function exampleSize(example: StateDiagramExample): { width: number; height: num
   return example.size
 }
 
+function diagramSize(): { width: number; height: number } {
+  return exampleSize(EXAMPLES[exampleIndex]!)
+}
+
 function centerDiagram(): void {
-  if (!diagram || !activeRenderer) return
-  const size = exampleSize(EXAMPLES[exampleIndex]!)
-  diagram.width = size.width
-  diagram.height = size.height
-  diagram.x = Math.max(0, Math.floor((activeRenderer.width - size.width) / 2))
-  diagram.y = Math.max(0, Math.floor((activeRenderer.height - size.height) / 2))
-
-  positionFooter()
+  shell?.recenter()
 }
 
-function positionFooter(): void {
-  if (!footer || !activeRenderer) return
-  footer.y = Math.max(0, activeRenderer.height - 2)
-  footer.x = Math.max(0, Math.floor((activeRenderer.width - String(footer.content).length) / 2))
+function shellThemeFor(theme: StateDiagramTheme): DemoShellTheme {
+  return {
+    background: theme.background,
+    titleColor: theme.foreground,
+    kindColor: theme.footer,
+    keyColor: theme.foreground,
+    labelColor: theme.footer,
+  }
 }
 
-function applyTheme(renderer: CliRenderer): void {
+function applyTheme(_renderer: CliRenderer): void {
   if (!diagram) return
   const theme = THEMES[themeIndex]!
-  renderer.setBackgroundColor(theme.background)
   diagram.fg = theme.foreground
   diagram.bg = theme.background
   diagram.stateColor = theme.state
@@ -293,10 +279,8 @@ function applyTheme(renderer: CliRenderer): void {
   diagram.choiceColor = theme.transition
   diagram.endColor = theme.end
 
-  if (footer) {
-    footer.fg = theme.footer
-    updateFooter()
-  }
+  shell?.setTheme(shellThemeFor(theme))
+  updateFooter()
   applyAnimatedColors()
   centerDiagram()
 }
@@ -356,7 +340,7 @@ function animatedStateColors(theme: StateDiagramTheme, now = animationNow()): Re
     activeNeutralColor: incomingNeutral,
     previousNeutralColor: outgoingNeutral,
     pulseColor: colors.pulse,
-    keyForLevel: stateDiagramStateColorKey,
+    keyForLevel: State.stateColorKey,
   })
 }
 
@@ -373,7 +357,7 @@ function activeStateBackgroundColors(theme: StateDiagramTheme, now = animationNo
     progress,
     backgroundColor: colors.background,
     pulseColor: colors.pulse,
-    keyForLevel: stateDiagramStateColorKey,
+    keyForLevel: State.stateColorKey,
   })
 }
 
@@ -402,15 +386,8 @@ function restartStateColorAnimation(from: string | undefined, to: string | undef
   stateTransitionStartedAt = now
 }
 
-function stateTitle(parsed: StateDiagram, id: string | undefined): string {
-  if (!id) return "none"
-  if (id === "__start") return "start"
-  if (id === "__end") return "end"
-  return parsed.states.find((state) => state.id === id)?.label.replace(/<br\s*\/?>/gi, " ") ?? id
-}
-
 function selectableTransitionsFrom(
-  parsed: StateDiagram,
+  parsed: State.Diagram,
   from: string,
   visited: Set<string> = new Set(),
 ): SelectableTransition[] {
@@ -459,13 +436,13 @@ function selectedTransition(parsed = parsedDiagram): SelectableTransition | unde
   return transitions[index]
 }
 
-function selectedActiveTransition(parsed = parsedDiagram): StateDiagramActiveTransition[] | undefined {
+function selectedActiveTransition(parsed = parsedDiagram): State.ActiveTransition[] | undefined {
   const transition = selectedTransition(parsed)
   if (!transition) return undefined
   return transition.path
 }
 
-function visibleActiveTransition(parsed = parsedDiagram): StateDiagramActiveTransition[] | undefined {
+function visibleActiveTransition(parsed = parsedDiagram): State.ActiveTransition[] | undefined {
   return pendingFollow?.transition.path ?? selectedActiveTransition(parsed)
 }
 
@@ -477,15 +454,19 @@ function resetInteraction(): void {
 }
 
 function updateFooter(): void {
-  if (!footer) return
-  const parsed = parsedDiagram
-  const transition = selectedTransition(parsed)
-  const transitionText = transition
-    ? `Selected: ${transition.label || "next"} -> ${stateTitle(parsed, transition.to)}`
-    : "No outgoing transition"
-  const followText = pendingFollow ? ` · Following: ${pendingFollow.transition.label}` : ""
-  footer.content = `${EXAMPLES[exampleIndex]!.title} · State: ${stateTitle(parsed, activeState)} · ${transitionText}${followText} · Tab edge · Enter pulse+follow · ←/→ examples · T theme`
-  positionFooter()
+  const entries: FooterEntry[] = [
+    { keys: "Tab", label: "transition" },
+    { keys: "Enter", label: "follow" },
+    { keys: "←/→", label: "example" },
+    { keys: "T", label: "theme" },
+    { keys: "Esc", label: "back" },
+  ]
+  shell?.setFooterEntries(entries)
+}
+
+function updateHeader(): void {
+  shell?.setTitle(EXAMPLES[exampleIndex]!.title)
+  shell?.setStep(exampleIndex, EXAMPLES.length)
 }
 
 function syncInteraction(): void {
@@ -503,12 +484,14 @@ function updateDiagram(): void {
   if (!diagram || !activeRenderer) return
   const example = EXAMPLES[exampleIndex]!
   pendingFollow = undefined
-  parsedDiagram = parseMermaidStateDiagram(example.content)
+  parsedDiagram = State.parse(example.content)
   diagram.content = example.content
   resetInteraction()
   restartTransitionAnimation()
   syncInteraction()
   applyTheme(activeRenderer)
+  updateHeader()
+  shell?.scrollToOrigin()
 }
 
 function cycleTransition(direction: 1 | -1): void {
@@ -544,6 +527,13 @@ function finishPendingFollow(): void {
 }
 
 function tickAnimations(): void {
+  if (!diagram || diagram.isDestroyed) {
+    if (animationTimer) {
+      clearInterval(animationTimer)
+      animationTimer = undefined
+    }
+    return
+  }
   const now = animationNow()
   const update = () => {
     if (diagram) {
@@ -566,23 +556,24 @@ function tickAnimations(): void {
 
 export function run(renderer: CliRenderer): void {
   activeRenderer = renderer
+  exampleIndex = 0
   const theme = THEMES[themeIndex]!
-  renderer.setBackgroundColor(theme.background)
   const example = EXAMPLES[exampleIndex]!
-  parsedDiagram = parseMermaidStateDiagram(example.content)
+  parsedDiagram = State.parse(example.content)
   resetInteraction()
   restartTransitionAnimation()
-  const size = exampleSize(example)
-  diagram = new StateDiagramRenderable(renderer, {
-    id: "state-diagram-demo",
+
+  shell = new DemoShell(renderer, {
+    id: "state-diagram",
+    kind: "state",
+    theme: shellThemeFor(theme),
+  })
+
+  diagram = new State.Renderable(renderer, {
+    id: "state-diagram-content",
     content: example.content,
     activeState,
     activeTransition: selectedActiveTransition(),
-    position: "absolute",
-    left: Math.max(0, Math.floor((renderer.width - size.width) / 2)),
-    top: Math.max(0, Math.floor((renderer.height - size.height) / 2)),
-    width: size.width,
-    height: size.height,
     fg: theme.foreground,
     bg: theme.background,
     stateColor: theme.state,
@@ -602,25 +593,19 @@ export function run(renderer: CliRenderer): void {
     choiceColor: theme.transition,
     endColor: theme.end,
   })
-  renderer.root.add(diagram)
+  diagram.selectable = false
+  shell.mount({ renderable: diagram, getSize: diagramSize })
+  shell.focus()
 
-  footer = new TextRenderable(renderer, {
-    id: "state-diagram-footer",
-    content: "",
-    position: "absolute",
-    left: 0,
-    top: Math.max(0, renderer.height - 2),
-    fg: theme.footer,
-  })
-  renderer.root.add(footer)
   applyTheme(renderer)
   syncInteraction()
+  updateHeader()
 
   keyHandler = (key) => {
-    if (key.name === "right") {
+    if (key.name === "right" || key.name === "arrowright") {
       exampleIndex = (exampleIndex + 1) % EXAMPLES.length
       updateDiagram()
-    } else if (key.name === "left") {
+    } else if (key.name === "left" || key.name === "arrowleft") {
       exampleIndex = (exampleIndex - 1 + EXAMPLES.length) % EXAMPLES.length
       updateDiagram()
     } else if (key.name === "tab") {
@@ -636,8 +621,6 @@ export function run(renderer: CliRenderer): void {
   }
   renderer.keyInput.on("keypress", keyHandler)
 
-  resizeHandler = () => centerDiagram()
-  renderer.on("resize", resizeHandler)
   if (animationTimer) clearInterval(animationTimer)
   animationTimer = setInterval(tickAnimations, ANIMATION_INTERVAL_MS)
   setupCommonDemoKeys(renderer)
@@ -646,14 +629,11 @@ export function run(renderer: CliRenderer): void {
 export function destroy(renderer: CliRenderer): void {
   if (animationTimer) clearInterval(animationTimer)
   if (keyHandler) renderer.keyInput.off("keypress", keyHandler)
-  if (resizeHandler) renderer.off("resize", resizeHandler)
-  diagram?.destroyRecursively()
-  footer?.destroyRecursively()
+  shell?.destroy()
   diagram = undefined
-  footer = undefined
+  shell = undefined
   activeRenderer = undefined
   keyHandler = undefined
-  resizeHandler = undefined
   animationTimer = undefined
   pendingFollow = undefined
   previousActiveState = undefined
@@ -665,7 +645,7 @@ if (import.meta.main) {
     const index = Math.max(0, Math.min(EXAMPLES.length - 1, Number.parseInt(exampleArg?.split("=")[1] ?? "1", 10) - 1))
     const plain = process.argv.includes("--plain")
     const content = EXAMPLES[index]!.content
-    process.stdout.write(plain ? renderStateDiagram(content) : renderStateDiagramAnsi(content))
+    process.stdout.write(State.render(content, { color: !plain }))
   } else {
     const renderer = await createCliRenderer({ targetFps: 30 })
     run(renderer)

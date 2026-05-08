@@ -1,10 +1,6 @@
 import { firstMeaningfulMermaidLine, mermaidLines } from "../core/mermaid.js"
 import { splitDiagramLines } from "../core/text-lines.js"
-import {
-  normalizeStateDiagramEndpoint,
-  stateDiagramEndMarkerId,
-  stateDiagramStartMarkerId,
-} from "./endpoint.js"
+import { normalizeStateDiagramEndpoint, stateDiagramEndMarkerId, stateDiagramStartMarkerId } from "./endpoint.js"
 import type {
   StateDiagram,
   StateDiagramCompositeState,
@@ -93,7 +89,11 @@ export function parseMermaidStateDiagram(content: string): StateDiagram {
   for (const line of mermaidLines(content)) {
     if (pendingNote) {
       if (NOTE_END_RE.test(line)) {
-        notes.push({ target: pendingNote.target, position: pendingNote.position, lines: pendingNote.lines })
+        notes.push({
+          target: pendingNote.target,
+          position: pendingNote.position,
+          lines: pendingNote.lines,
+        })
         pendingNote = undefined
       } else if (line || pendingNote.lines.length > 0) {
         pendingNote.lines.push(line)
@@ -172,7 +172,12 @@ export function parseMermaidStateDiagram(content: string): StateDiagram {
     }
   }
 
-  if (pendingNote) notes.push({ target: pendingNote.target, position: pendingNote.position, lines: pendingNote.lines })
+  if (pendingNote)
+    notes.push({
+      target: pendingNote.target,
+      position: pendingNote.position,
+      lines: pendingNote.lines,
+    })
 
   if (composites.length === 0) {
     return { direction, states: [...states.values()], transitions, composites, notes }

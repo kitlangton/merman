@@ -6,7 +6,11 @@ import type {
   FlowchartNode,
   FlowchartSubgraph,
 } from "./types.js"
-import { firstMeaningfulMermaidLine, meaningfulMermaidLines, stripMermaidQuotes as stripQuotes } from "../core/mermaid.js"
+import {
+  firstMeaningfulMermaidLine,
+  meaningfulMermaidLines,
+  stripMermaidQuotes as stripQuotes,
+} from "../core/mermaid.js"
 
 const DEFAULT_DIRECTION = "TD" satisfies FlowchartDirection
 const FLOWCHART_HEADER_RE = /^(flowchart|graph)(?:\s+(TB|TD|BT|LR|RL))?$/i

@@ -15,7 +15,6 @@ import {
   pathViaLane,
   sideForDirection,
   snapCoordinate,
-  shiftPoint,
   withCoordinate,
   type DiagramAxis,
   type DiagramDirection,

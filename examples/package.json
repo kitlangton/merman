@@ -1,8 +1,9 @@
 {
-  "name": "opentui-diagrams-examples",
+  "name": "merman-examples",
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "bun src/index.ts",
     "flowchart": "bun src/flowchart-demo.ts",
     "state": "bun src/state-diagram-demo.ts",
     "sequence": "bun src/sequence-diagram-demo.ts",
@@ -11,7 +12,7 @@
     "print:sequence": "bun src/sequence-diagram-demo.ts --print --plain"
   },
   "dependencies": {
-    "@opentui/core": "0.2.2",
-    "opentui-diagrams": "file:.."
+    "@kitlangton/merman": "file:..",
+    "@opentui/core": "0.2.2"
   }
 }

@@ -87,7 +87,11 @@ function nodeSize(node: FlowchartNode): FlowchartNodeSize {
   const innerWidth = width - 4
   if (node.shape === "decision") {
     const width = innerWidth + 6
-    return { width: width % 2 === 0 ? width + 1 : width, height: Math.max(5, lines.length + 4), lines }
+    return {
+      width: width % 2 === 0 ? width + 1 : width,
+      height: Math.max(5, lines.length + 4),
+      lines,
+    }
   }
   if (node.shape === "database") return { width: innerWidth + 4, height: lines.length + 4, lines }
   if (node.shape === "subroutine") return { width: innerWidth + 6, height: lines.length + 2, lines }
@@ -239,7 +243,14 @@ function labelBounds(route: FlowchartEdgeRoute): FlowchartBounds | undefined {
   if (!route.edge.label) return undefined
   const label = flowchartEdgeLabelLayout(route.points, route.edge.label, visualLength)
   const { point, width } = label
-  return { left: point.x, top: point.y, width, height: 1, centerX: point.x + Math.floor(width / 2), centerY: point.y }
+  return {
+    left: point.x,
+    top: point.y,
+    width,
+    height: 1,
+    centerX: point.x + Math.floor(width / 2),
+    centerY: point.y,
+  }
 }
 
 function subgraphRouteBounds(subgraphNodeIds: Set<string>, routes: readonly FlowchartEdgeRoute[]): FlowchartBounds[] {

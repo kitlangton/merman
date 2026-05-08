@@ -1,12 +1,7 @@
-import {
-  BoxRenderable,
-  type CliRenderer,
-  createCliRenderer,
-  type KeyEvent,
-  ScrollBoxRenderable,
-  TextRenderable,
-} from "@opentui/core"
-import { renderSequenceDiagram, renderSequenceDiagramAnsi, SequenceDiagramRenderable } from "opentui-diagrams"
+import { type CliRenderer, createCliRenderer, type KeyEvent } from "@opentui/core"
+import { Sequence } from "@kitlangton/merman"
+import { type FooterEntry } from "./lib/demo-footer.js"
+import { DemoShell, type DemoShellTheme } from "./lib/demo-shell.js"
 import { setupCommonDemoKeys } from "./lib/standalone-keys.js"
 
 export const GROUP_SEQUENCE_DIAGRAM = `sequenceDiagram
@@ -129,16 +124,14 @@ const EXAMPLES: SequenceDiagramExample[] = [
 ]
 const DEMO_FRAGMENT_BORDER_STYLE = "double" as const
 
-let container: BoxRenderable | null = null
-let scrollBox: ScrollBoxRenderable | null = null
-let diagram: SequenceDiagramRenderable | null = null
-let titleText: TextRenderable | null = null
-let footer: TextRenderable | null = null
+let shell: DemoShell | null = null
+let diagram: Sequence.Renderable | null = null
 let keyHandler: ((key: KeyEvent) => void) | null = null
 let pulseTimer: ReturnType<typeof setInterval> | null = null
 let themeIndex = 0
 let exampleIndex = 0
 let pulseFrame = 0
+let cachedDiagramSize: { width: number; height: number } | undefined
 
 interface SequenceDiagramTheme {
   name: string
@@ -224,10 +217,39 @@ const THEMES: SequenceDiagramTheme[] = [
   },
 ]
 
+function measureDiagram(content: string): { width: number; height: number } {
+  const lines = Sequence.render(content, {
+    color: false,
+    fragmentBorderStyle: DEMO_FRAGMENT_BORDER_STYLE,
+  }).split("\n")
+  return {
+    width: Math.max(0, ...lines.map((line) => line.length)),
+    height: lines.length,
+  }
+}
+
+function diagramSize(): { width: number; height: number } {
+  return cachedDiagramSize ?? { width: 0, height: 0 }
+}
+
+function shellThemeFor(theme: SequenceDiagramTheme): DemoShellTheme {
+  return {
+    background: theme.background,
+    titleColor: theme.title,
+    kindColor: theme.footer,
+    keyColor: theme.foreground,
+    labelColor: theme.footer,
+  }
+}
+
 function applyExample(): void {
   const example = EXAMPLES[exampleIndex]!
   diagram!.content = example.content
-  titleText!.content = `Mermaid sequenceDiagram -> OpenTUI · ${exampleIndex + 1}. ${example.title}`
+  cachedDiagramSize = measureDiagram(example.content)
+  shell?.setTitle(example.title)
+  shell?.setStep(exampleIndex, EXAMPLES.length)
+  shell?.recenter()
+  shell?.scrollToOrigin()
 }
 
 function selectExample(renderer: CliRenderer, nextExampleIndex: number): void {
@@ -237,14 +259,7 @@ function selectExample(renderer: CliRenderer, nextExampleIndex: number): void {
   applyTheme(renderer, THEMES[themeIndex]!)
 }
 
-function applyTheme(renderer: CliRenderer, theme: SequenceDiagramTheme): void {
-  const example = EXAMPLES[exampleIndex]!
-  renderer.setBackgroundColor(theme.background)
-  container!.backgroundColor = theme.background
-  scrollBox!.backgroundColor = theme.background
-  scrollBox!.viewportOptions = { backgroundColor: theme.background }
-  scrollBox!.contentOptions = { backgroundColor: theme.background, padding: 1 }
-
+function applyTheme(_renderer: CliRenderer, theme: SequenceDiagramTheme): void {
   diagram!.fg = theme.foreground
   diagram!.bg = theme.background
   diagram!.participantColor = theme.participant
@@ -255,48 +270,27 @@ function applyTheme(renderer: CliRenderer, theme: SequenceDiagramTheme): void {
   diagram!.noteColor = theme.note
   diagram!.noteBackgroundColor = theme.noteBackground
 
-  footer!.fg = theme.footer
-  footer!.content = `${example.description} · Theme: ${theme.name} · 1-${EXAMPLES.length} or Left/Right switch examples · T cycles themes`
+  shell?.setTheme(shellThemeFor(theme))
+  const entries: FooterEntry[] = [
+    { keys: "←/→", label: "example" },
+    { keys: "T", label: "theme" },
+    { keys: "Esc", label: "back" },
+  ]
+  shell?.setFooterEntries(entries)
 }
 
 export function run(renderer: CliRenderer): void {
+  exampleIndex = 0
   const initialTheme = THEMES[themeIndex]!
-  renderer.setBackgroundColor(initialTheme.background)
 
-  container = new BoxRenderable(renderer, {
-    id: "sequence-diagram-demo",
-    flexGrow: 1,
-    flexDirection: "column",
-    backgroundColor: initialTheme.background,
-    padding: 1,
+  shell = new DemoShell(renderer, {
+    id: "sequence-diagram",
+    kind: "sequence",
+    theme: shellThemeFor(initialTheme),
   })
 
-  titleText = new TextRenderable(renderer, {
-    id: "sequence-diagram-title",
-    content: "",
-    fg: initialTheme.title,
-    marginBottom: 1,
-    flexShrink: 0,
-  })
-
-  scrollBox = new ScrollBoxRenderable(renderer, {
-    id: "sequence-diagram-scrollbox",
-    rootOptions: {
-      border: false,
-      backgroundColor: initialTheme.background,
-    },
-    viewportOptions: {
-      backgroundColor: initialTheme.background,
-    },
-    contentOptions: {
-      backgroundColor: initialTheme.background,
-      padding: 1,
-    },
-    flexGrow: 1,
-  })
-
-  diagram = new SequenceDiagramRenderable(renderer, {
-    id: "auth-sequence-diagram",
+  diagram = new Sequence.Renderable(renderer, {
+    id: "sequence-diagram-content",
     content: EXAMPLES[exampleIndex]!.content,
     fg: initialTheme.foreground,
     bg: initialTheme.background,
@@ -312,31 +306,15 @@ export function run(renderer: CliRenderer): void {
     noteColor: initialTheme.note,
     noteBackgroundColor: initialTheme.noteBackground,
   })
-
-  footer = new TextRenderable(renderer, {
-    id: "sequence-diagram-footer",
-    content: "",
-    fg: initialTheme.footer,
-    marginTop: 1,
-    flexShrink: 0,
-  })
-
-  scrollBox.add(diagram)
-  container.add(titleText)
-  container.add(scrollBox)
-  container.add(footer)
-  renderer.root.add(container)
-  scrollBox.focus()
+  diagram.selectable = false
+  cachedDiagramSize = measureDiagram(EXAMPLES[exampleIndex]!.content)
+  shell.mount({ renderable: diagram, getSize: diagramSize })
+  shell.focus()
   applyExample()
   applyTheme(renderer, initialTheme)
 
   keyHandler = (key: KeyEvent) => {
     if (key.ctrl || key.meta) return
-
-    if (/^[1-9]$/.test(key.name)) {
-      selectExample(renderer, Number(key.name) - 1)
-      return
-    }
 
     if (key.name === "right" || key.name === "arrowright") {
       selectExample(renderer, (exampleIndex + 1) % EXAMPLES.length)
@@ -359,10 +337,15 @@ export function run(renderer: CliRenderer): void {
     clearInterval(pulseTimer)
   }
   pulseTimer = setInterval(() => {
-    pulseFrame = (pulseFrame + 1) % 10_000
-    if (diagram) {
-      diagram.pulseFrame = pulseFrame
+    if (!diagram || diagram.isDestroyed) {
+      if (pulseTimer) {
+        clearInterval(pulseTimer)
+        pulseTimer = null
+      }
+      return
     }
+    pulseFrame = (pulseFrame + 1) % 10_000
+    diagram.pulseFrame = pulseFrame
   }, 60)
 }
 
@@ -375,14 +358,10 @@ export function destroy(renderer: CliRenderer): void {
     renderer.keyInput.off("keypress", keyHandler)
     keyHandler = null
   }
-  if (!container) return
-  renderer.root.remove(container.id)
-  container.destroyRecursively()
-  container = null
-  scrollBox = null
+  shell?.destroy()
+  shell = null
   diagram = null
-  titleText = null
-  footer = null
+  cachedDiagramSize = undefined
 }
 
 if (import.meta.main) {
@@ -390,9 +369,10 @@ if (import.meta.main) {
     const shouldPrintPlain = process.argv.includes("--plain") || process.env.NO_COLOR !== undefined
     const selectedExample = EXAMPLES.find((_, index) => process.argv.includes(`--example=${index + 1}`)) ?? EXAMPLES[0]!
     console.log(
-      shouldPrintPlain
-        ? renderSequenceDiagram(selectedExample.content, { fragmentBorderStyle: DEMO_FRAGMENT_BORDER_STYLE })
-        : renderSequenceDiagramAnsi(selectedExample.content, { fragmentBorderStyle: DEMO_FRAGMENT_BORDER_STYLE }),
+      Sequence.render(selectedExample.content, {
+        color: !shouldPrintPlain,
+        fragmentBorderStyle: DEMO_FRAGMENT_BORDER_STYLE,
+      }),
     )
   } else {
     const renderer = await createCliRenderer({ exitOnCtrlC: true })

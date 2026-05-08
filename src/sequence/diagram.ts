@@ -1,4 +1,13 @@
-import { BorderChars, RGBA, type BorderStyle, type ColorInput, type RenderContext, type StyledText, TextBufferRenderable, type TextBufferOptions } from "@opentui/core"
+import {
+  BorderChars,
+  RGBA,
+  type BorderStyle,
+  type ColorInput,
+  type RenderContext,
+  type StyledText,
+  TextBufferRenderable,
+  type TextBufferOptions,
+} from "@opentui/core"
 import { DiagramCanvas } from "../core/canvas.js"
 import { diagramPulseCellStyle, diagramPulseStyleLevel } from "../core/animation/pulse-cell.js"
 import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
@@ -22,7 +31,11 @@ import {
   type DiagramRgb,
 } from "../core/color/style.js"
 import { diagramTextWidth } from "../core/text.js"
-import { firstMeaningfulMermaidLine, meaningfulMermaidLines, stripMermaidQuotes as stripQuotes } from "../core/mermaid.js"
+import {
+  firstMeaningfulMermaidLine,
+  meaningfulMermaidLines,
+  stripMermaidQuotes as stripQuotes,
+} from "../core/mermaid.js"
 import { renderDiagramGridAnsi, renderDiagramGridStyledText } from "../core/render-grid.js"
 
 export interface SequenceParticipant {
@@ -126,14 +139,6 @@ type AnsiSequenceCellStyle =
 type SequenceCellStyle = AnsiSequenceCellStyle | "noteBadge"
 
 type SequenceGrid = DiagramCanvas<SequenceCellStyle>
-
-interface SequenceLayoutOptions {
-  minParticipantGap: number
-  fragmentBorderStyle: BorderStyle
-  pulseFrame?: number
-  pulseLength: number
-  pulseGap: number
-}
 
 type SequenceStyleColors = Partial<Record<AnsiSequenceCellStyle, RGBA>> & {
   noteBg?: RGBA
@@ -381,7 +386,10 @@ export function parseMermaidSequenceDiagram(content: string): SequenceDiagram {
 
     const boxMatch = line.match(BOX_RE)
     if (boxMatch) {
-      const group: SequenceParticipantGroup = { label: boxLabelText(boxMatch[1]), participantIds: [] }
+      const group: SequenceParticipantGroup = {
+        label: boxLabelText(boxMatch[1]),
+        participantIds: [],
+      }
       groups.push(group)
       groupStack.push(group)
       blockStack.push("box")
@@ -434,13 +442,19 @@ export function parseMermaidSequenceDiagram(content: string): SequenceDiagram {
     const loopMatch = line.match(LOOP_RE)
     if (loopMatch) {
       blockStack.push("loop")
-      steps.push({ type: "fragment", fragment: { kind: "loop", label: stripQuotes(loopMatch[1]!) } })
+      steps.push({
+        type: "fragment",
+        fragment: { kind: "loop", label: stripQuotes(loopMatch[1]!) },
+      })
       continue
     }
 
     const elseMatch = line.match(ELSE_RE)
     if (elseMatch) {
-      steps.push({ type: "fragment", fragment: { kind: "else", label: stripQuotes(elseMatch[1] ?? "") } })
+      steps.push({
+        type: "fragment",
+        fragment: { kind: "else", label: stripQuotes(elseMatch[1] ?? "") },
+      })
       continue
     }
 
