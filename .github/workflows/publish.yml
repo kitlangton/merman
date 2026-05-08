@@ -1,4 +1,4 @@
-name: Release
+name: Publish
 
 # Publishes to npm via Trusted Publisher OIDC.
 #
@@ -6,7 +6,7 @@ name: Release
 #   Package settings -> Trusted Publishers -> GitHub Actions
 #   owner: kitlangton
 #   repository: merman
-#   workflow filename: release.yml
+#   workflow filename: publish.yml
 #
 # To release: bump `version` in package.json, commit, then push a `vX.Y.Z` tag:
 #   git tag v0.1.0 && git push origin v0.1.0

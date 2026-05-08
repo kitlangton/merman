@@ -41,6 +41,7 @@ diagrams as plain text, ANSI-colored output, or a live
 > Status: experimental. APIs may shift before `1.0`.
 
 - [CLI](#cli)
+- [Examples](#examples)
 - [Library](#library)
 
 ## CLI
@@ -79,6 +80,49 @@ merman --file diagram.mmd --no-color > rendered.txt
 
 The CLI is shipped as a Bun executable, so Bun must be available on your
 `$PATH`.
+
+## Examples
+
+Flowchart:
+
+```txt
+╭──────╮          ╭───────╮          ╭────────╮          ╭──────────╮
+│ Idea ├─────────▶│ Parse ├─────────▶│ Render ├─────────▶│ Terminal │
+╰──────╯          ╰───────╯          ╰────────╯          ╰──────────╯
+```
+
+Sequence diagram:
+
+```txt
+╭──────╮         ╭────────╮       ╭──────────╮
+│ User │         │ merman │       │ Terminal │
+╰───┬──╯         ╰────┬───╯       ╰─────┬────╯
+    │                 │                 │
+    │ diagram.mmd     │                 │
+    ├─────────────────▶                 │
+    │                 │                 │
+    │                 │ ANSI art        │
+    │                 ├─────────────────▶
+    │                 │                 │
+    │ ship it         │                 │
+    ◀───────────────────────────────────┤
+    │                 │                 │
+```
+
+State diagram:
+
+```txt
+                           ╔═══════════╗           ╔═══════════════════╗
+                       ╔═══╣ edit loop ║       ╔═══╣ terminal snapshot ║
+                       ║   ╚═══════════╝       ║   ╚═══════════════════╝
+                       ║                       ║
+                       ║                       ║
+              ╭───────╮   render    ╭─────────╮    ship     ╭───────────╮
+●────────────▶│ Draft ├────────────▶│ Preview ├────────────▶│ Published ├────────────▶◎
+              ╰──┬────╯             ╰──┬──────╯             ╰───┬───────╯
+                 │  ▲ type             │    ▲ tweak             │    ▲ share
+                 ╰──╯                  ╰────╯                   ╰────╯
+```
 
 ## Library
 

@@ -12,7 +12,7 @@ describe("package integrity", () => {
   test("publishes only the compiled dist + license/readme", async () => {
     const packageJson = await Bun.file("package.json").json()
 
-    expect(packageJson.files).toEqual(["dist", "README.md", "LICENSE"])
+    expect(packageJson.files).toEqual(["bin", "dist", "README.md", "LICENSE"])
   })
 
   test("keeps core package-internal", async () => {

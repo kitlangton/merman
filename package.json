@@ -1,6 +1,6 @@
 {
   "name": "@kitlangton/merman",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Mermaid-flavored flowchart, sequence, and state diagrams for OpenTUI terminals.",
   "keywords": [
     "ansi",
@@ -26,17 +26,13 @@
     "url": "git+https://github.com/kitlangton/merman.git"
   },
   "bin": {
-    "merman": "./dist/cli/main.mjs"
+    "merman": "bin/merman.js"
   },
-  "workspaces": {
-    "packages": [
-      "examples"
-    ],
-    "catalog": {
-      "effect": "4.0.0-beta.59"
-    }
-  },
+  "workspaces": [
+    "examples"
+  ],
   "files": [
+    "bin",
     "dist",
     "README.md",
     "LICENSE"
@@ -65,14 +61,13 @@
     "attw": "attw --pack . --profile esm-only",
     "publint": "publint",
     "validate": "bun run build && bun run publint && bun run attw",
-    "prepublishOnly": "bun run build && bun run typecheck && bun run test && bun run validate",
     "examples": "bun examples/src/index.ts",
     "examples:flowchart": "bun examples/src/flowchart-demo.ts",
     "examples:state": "bun examples/src/state-diagram-demo.ts",
     "examples:sequence": "bun examples/src/sequence-diagram-demo.ts"
   },
   "dependencies": {
-    "effect": "catalog:",
+    "effect": "4.0.0-beta.59",
     "string-width": "7.2.0"
   },
   "devDependencies": {
