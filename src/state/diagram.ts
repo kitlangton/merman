@@ -9,13 +9,7 @@ import { diagramArrowHead, diagramLineGlyph, drawDiagramFrame, mergeDiagramLineG
 import type { DiagramDirection } from "../core/geometry.js"
 import { setDiagramPulseCell } from "../core/animation/pulse-cell.js"
 import { parseDiagramRenderableColor, setDiagramRenderableColor } from "../core/adapter/renderable-color.js"
-import {
-  normalizeDiagramPulseFrame,
-  normalizeDiagramPulseGap,
-  normalizeDiagramPulseLength,
-  normalizeDiagramPulseProgress,
-  visitDiagramPulsePath,
-} from "../core/animation/pulse.js"
+import { visitDiagramPulsePath } from "../core/animation/pulse.js"
 import {
   activeTransitionIndex,
   activeTransitionListsEqual,
@@ -32,6 +26,16 @@ import {
   type StateDiagramNoteBounds as StateNoteBounds,
 } from "./layout.js"
 import { diagramTextWidth } from "../core/text.js"
+import {
+  DEFAULT_STATE_ARROW_HEAD_STYLE,
+  DEFAULT_STATE_BORDER_STYLE,
+  DEFAULT_STATE_DIAGRAM_MIN_STATE_GAP,
+  normalizeStateMinStateGap,
+  normalizeStatePulseFrame,
+  normalizeStatePulseGap,
+  normalizeStatePulseLength,
+  normalizeStatePulseProgress,
+} from "./options.js"
 import { parseMermaidStateDiagram } from "./parser.js"
 import {
   renderStateGridAnsi,
@@ -103,32 +107,11 @@ interface TransitionDrawContext {
   sourceStateId: string
 }
 
-const DEFAULT_MIN_STATE_GAP = 5
-const DEFAULT_BORDER_STYLE = "rounded" satisfies BorderStyle
-const DEFAULT_ARROW_HEAD_STYLE = "filled" satisfies StateDiagramArrowHeadStyle
-const DEFAULT_PULSE_LENGTH = 5
-const DEFAULT_PULSE_GAP = 14
 const ACTIVE_TRANSITION_FRONTIER_ACTIVE_SIDE = 2
 const ACTIVE_TRANSITION_FRONTIER_INACTIVE_SIDE = 5
 
 function visualLength(value: string): number {
   return diagramTextWidth(value)
-}
-
-function normalizePulseFrame(value: number | undefined): number | undefined {
-  return normalizeDiagramPulseFrame(value)
-}
-
-function normalizePulseProgress(value: number | undefined): number | undefined {
-  return normalizeDiagramPulseProgress(value)
-}
-
-function normalizePulseLength(value: number | undefined): number {
-  return normalizeDiagramPulseLength(value, DEFAULT_PULSE_LENGTH)
-}
-
-function normalizePulseGap(value: number | undefined): number {
-  return normalizeDiagramPulseGap(value, DEFAULT_PULSE_GAP)
 }
 
 function makeGrid(width: number, height: number): StateGrid {
@@ -962,14 +945,14 @@ function layoutStateDiagram(content: string, options: StateDiagramRenderOptions 
   const parsedDiagram = parseMermaidStateDiagram(content)
   parsedDiagram.direction = options.direction ?? parsedDiagram.direction
   const diagram = createRenderDiagram(parsedDiagram)
-  const borderStyle = options.borderStyle ?? DEFAULT_BORDER_STYLE
-  const arrowHeadStyle = options.arrowHeadStyle ?? DEFAULT_ARROW_HEAD_STYLE
-  const minStateGap = Math.max(1, Math.floor(options.minStateGap ?? DEFAULT_MIN_STATE_GAP))
-  const pulseFrame = normalizePulseFrame(options.pulseFrame)
-  const pulseProgress = normalizePulseProgress(options.pulseProgress)
-  const pulseLength = normalizePulseLength(options.pulseLength)
-  const pulseGap = normalizePulseGap(options.pulseGap)
-  const activeTransitionProgress = normalizePulseProgress(options.activeTransitionProgress)
+  const borderStyle = options.borderStyle ?? DEFAULT_STATE_BORDER_STYLE
+  const arrowHeadStyle = options.arrowHeadStyle ?? DEFAULT_STATE_ARROW_HEAD_STYLE
+  const minStateGap = normalizeStateMinStateGap(options.minStateGap)
+  const pulseFrame = normalizeStatePulseFrame(options.pulseFrame)
+  const pulseProgress = normalizeStatePulseProgress(options.pulseProgress)
+  const pulseLength = normalizeStatePulseLength(options.pulseLength)
+  const pulseGap = normalizeStatePulseGap(options.pulseGap)
+  const activeTransitionProgress = normalizeStatePulseProgress(options.activeTransitionProgress)
   const activeTransitionMode = normalizeActiveTransitionMode(options.activeTransitionMode)
   const activeTransitions = normalizeActiveTransitions(options.activeTransition)
   const { bounds, sizes, compositeBounds, noteBounds } = createStateDiagramLayout(diagram, { minStateGap })
@@ -1085,12 +1068,12 @@ export class StateDiagramRenderable extends TextBufferRenderable {
     super(ctx, { ...options, wrapMode: options.wrapMode ?? "none" })
     this._content = options.content ?? ""
     this._direction = options.direction
-    this._borderStyle = options.borderStyle ?? DEFAULT_BORDER_STYLE
-    this._arrowHeadStyle = options.arrowHeadStyle ?? DEFAULT_ARROW_HEAD_STYLE
-    this._minStateGap = options.minStateGap ?? DEFAULT_MIN_STATE_GAP
+    this._borderStyle = options.borderStyle ?? DEFAULT_STATE_BORDER_STYLE
+    this._arrowHeadStyle = options.arrowHeadStyle ?? DEFAULT_STATE_ARROW_HEAD_STYLE
+    this._minStateGap = options.minStateGap ?? DEFAULT_STATE_DIAGRAM_MIN_STATE_GAP
     this._activeState = options.activeState
     this._activeTransitions = normalizeActiveTransitions(options.activeTransition)
-    this._activeTransitionProgress = normalizePulseProgress(options.activeTransitionProgress)
+    this._activeTransitionProgress = normalizeStatePulseProgress(options.activeTransitionProgress)
     this._activeTransitionMode = normalizeActiveTransitionMode(options.activeTransitionMode)
     this._stateColor = parseDiagramRenderableColor(options.stateColor)
     this._activeStateColor = parseDiagramRenderableColor(options.activeStateColor)
@@ -1107,10 +1090,10 @@ export class StateDiagramRenderable extends TextBufferRenderable {
     this._choiceColor = parseDiagramRenderableColor(options.choiceColor)
     this._stateColors = normalizeDiagramColorMap(options.stateColors)
     this._stateBgColors = normalizeDiagramColorMap(options.stateBgColors)
-    this._pulseFrame = normalizePulseFrame(options.pulseFrame)
-    this._pulseProgress = normalizePulseProgress(options.pulseProgress)
-    this._pulseLength = normalizePulseLength(options.pulseLength)
-    this._pulseGap = normalizePulseGap(options.pulseGap)
+    this._pulseFrame = normalizeStatePulseFrame(options.pulseFrame)
+    this._pulseProgress = normalizeStatePulseProgress(options.pulseProgress)
+    this._pulseLength = normalizeStatePulseLength(options.pulseLength)
+    this._pulseGap = normalizeStatePulseGap(options.pulseGap)
     this.updateDiagram()
   }
 
@@ -1149,7 +1132,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
   }
 
   set borderStyle(value: BorderStyle | undefined) {
-    const next = value ?? DEFAULT_BORDER_STYLE
+    const next = value ?? DEFAULT_STATE_BORDER_STYLE
     if (this._borderStyle === next) return
     this._borderStyle = next
     this.invalidateDiagram()
@@ -1160,7 +1143,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
   }
 
   set minStateGap(value: number | undefined) {
-    const next = value ?? DEFAULT_MIN_STATE_GAP
+    const next = value ?? DEFAULT_STATE_DIAGRAM_MIN_STATE_GAP
     if (this._minStateGap === next) return
     this._minStateGap = next
     this.invalidateDiagram()
@@ -1184,7 +1167,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
   }
 
   set activeTransitionProgress(value: number | undefined) {
-    const next = normalizePulseProgress(value)
+    const next = normalizeStatePulseProgress(value)
     if (this._activeTransitionProgress === next) return
     this._activeTransitionProgress = next
     this.invalidateDiagram()
@@ -1206,7 +1189,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
   }
 
   set arrowHeadStyle(value: StateDiagramArrowHeadStyle | undefined) {
-    const next = value ?? DEFAULT_ARROW_HEAD_STYLE
+    const next = value ?? DEFAULT_STATE_ARROW_HEAD_STYLE
     if (this._arrowHeadStyle === next) return
     this._arrowHeadStyle = next
     this.invalidateDiagram()
@@ -1291,7 +1274,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
   }
 
   set pulseFrame(value: number | undefined) {
-    const next = normalizePulseFrame(value)
+    const next = normalizeStatePulseFrame(value)
     if (this._pulseFrame === next) return
     this._pulseFrame = next
     this.invalidateDiagram()
@@ -1302,7 +1285,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
   }
 
   set pulseProgress(value: number | undefined) {
-    const next = normalizePulseProgress(value)
+    const next = normalizeStatePulseProgress(value)
     if (this._pulseProgress === next) return
     this._pulseProgress = next
     this.invalidateDiagram()
@@ -1313,7 +1296,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
   }
 
   set pulseLength(value: number | undefined) {
-    const next = normalizePulseLength(value)
+    const next = normalizeStatePulseLength(value)
     if (this._pulseLength === next) return
     this._pulseLength = next
     this.invalidateDiagram()
@@ -1324,7 +1307,7 @@ export class StateDiagramRenderable extends TextBufferRenderable {
   }
 
   set pulseGap(value: number | undefined) {
-    const next = normalizePulseGap(value)
+    const next = normalizeStatePulseGap(value)
     if (this._pulseGap === next) return
     this._pulseGap = next
     this.invalidateDiagram()
