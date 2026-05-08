@@ -17,6 +17,13 @@ import {
   visitDiagramPulsePath,
 } from "../core/animation/pulse.js"
 import {
+  activeTransitionIndex,
+  activeTransitionListsEqual,
+  isActiveTransition,
+  normalizeActiveTransitionMode,
+  normalizeActiveTransitions,
+} from "./active-transition.js"
+import {
   createStateDiagramLayout,
   expandCompositeBoundsForFeedback,
   hasReverseTransition,
@@ -25,7 +32,6 @@ import {
   type StateDiagramNoteBounds as StateNoteBounds,
 } from "./layout.js"
 import { diagramTextWidth } from "../core/text.js"
-import { normalizeStateDiagramEndpoint } from "./endpoint.js"
 import { parseMermaidStateDiagram } from "./parser.js"
 import {
   renderStateGridAnsi,
@@ -117,85 +123,12 @@ function normalizePulseProgress(value: number | undefined): number | undefined {
   return normalizeDiagramPulseProgress(value)
 }
 
-function normalizeActiveTransitionMode(
-  value: StateDiagramActiveTransitionMode | undefined,
-): StateDiagramActiveTransitionMode {
-  return value === "fade" ? "fade" : "reveal"
-}
-
 function normalizePulseLength(value: number | undefined): number {
   return normalizeDiagramPulseLength(value, DEFAULT_PULSE_LENGTH)
 }
 
 function normalizePulseGap(value: number | undefined): number {
   return normalizeDiagramPulseGap(value, DEFAULT_PULSE_GAP)
-}
-
-function normalizeActiveTransition(activeTransition: StateDiagramActiveTransition): StateDiagramActiveTransition {
-  return {
-    from: normalizeStateDiagramEndpoint(activeTransition.from, "from"),
-    to: normalizeStateDiagramEndpoint(activeTransition.to, "to"),
-    label: activeTransition.label,
-  }
-}
-
-function normalizeActiveTransitions(
-  activeTransition: StateDiagramActiveTransitionSelection | undefined,
-): StateDiagramActiveTransition[] {
-  if (!activeTransition) return []
-  const transitions = Array.isArray(activeTransition) ? activeTransition : [activeTransition]
-  return transitions.map(normalizeActiveTransition)
-}
-
-function activeTransitionEqual(left: StateDiagramActiveTransition, right: StateDiagramActiveTransition): boolean {
-  return left.from === right.from && left.to === right.to && left.label === right.label
-}
-
-function activeTransitionListsEqual(
-  left: readonly StateDiagramActiveTransition[],
-  right: readonly StateDiagramActiveTransition[],
-): boolean {
-  return (
-    left.length === right.length && left.every((transition, index) => activeTransitionEqual(transition, right[index]!))
-  )
-}
-
-function isActiveTransition(
-  transition: StateDiagramTransition,
-  activeTransitions: readonly StateDiagramActiveTransition[],
-): boolean {
-  return activeTransitionIndex(transition, activeTransitions) !== -1
-}
-
-function activeTransitionIndex(
-  transition: StateDiagramTransition,
-  activeTransitions: readonly StateDiagramActiveTransition[],
-): number {
-  const exactIndex = activeTransitions.findIndex(
-    (activeTransition) =>
-      activeTransition.from === transition.from &&
-      activeTransition.to === transition.to &&
-      (activeTransition.label === undefined || activeTransition.label === transition.label),
-  )
-  if (exactIndex !== -1) return exactIndex
-
-  const sourceTransitions = (transition as StateDiagramRenderTransition).sourceTransitions
-  if (!sourceTransitions || sourceTransitions.length <= 1 || activeTransitions.length < sourceTransitions.length)
-    return -1
-
-  for (let index = 0; index <= activeTransitions.length - sourceTransitions.length; index++) {
-    const matches = sourceTransitions.every((sourceTransition, offset) => {
-      const activeTransition = activeTransitions[index + offset]!
-      return (
-        activeTransition.from === sourceTransition.from &&
-        activeTransition.to === sourceTransition.to &&
-        (activeTransition.label === undefined || activeTransition.label === sourceTransition.label)
-      )
-    })
-    if (matches) return index
-  }
-
-  return -1
 }
 
 function makeGrid(width: number, height: number): StateGrid {
