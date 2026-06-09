@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises"
 import { Console, Effect } from "effect"
 import packageJson from "../../package.json" with { type: "json" }
+import { renderErDiagram, renderErDiagramAnsi } from "../er/render.js"
 import { renderFlowchartDiagram, renderFlowchartDiagramAnsi } from "../flowchart/render.js"
 import { detect, UnknownDiagramError, type DiagramKind } from "../index.js"
 import { renderSequenceDiagram, renderSequenceDiagramAnsi } from "../sequence/diagram.js"
@@ -38,12 +39,12 @@ Render Mermaid diagrams in the terminal.
 Usage:
   merman [content]
   merman --file <path>
-  merman --kind <flowchart|sequence|state> --file <path>
+  merman --kind <flowchart|sequence|state|er> --file <path>
   merman --replace <typescript-file>
 
 Options:
   -f, --file <path>   Read the diagram from a file
-      --kind <kind>   Override detection: flowchart, sequence, or state
+      --kind <kind>   Override detection: flowchart, sequence, state, or er
       --no-color      Emit plain text instead of ANSI color escapes
       --compact       Use compact diagram rendering where available
       --doc-comment=ts  Wrap output in a TypeScript doc-comment block
@@ -173,9 +174,9 @@ function readValue(argv: ReadonlyArray<string>, index: number, flag: string): Ef
 }
 
 function parseKind(value: string): Effect.Effect<DiagramKind, UsageError> {
-  return value === "flowchart" || value === "sequence" || value === "state"
+  return value === "flowchart" || value === "sequence" || value === "state" || value === "er"
     ? Effect.succeed(value)
-    : Effect.fail(new UsageError(`Invalid --kind: ${value}. Expected flowchart, sequence, or state.`))
+    : Effect.fail(new UsageError(`Invalid --kind: ${value}. Expected flowchart, sequence, state, or er.`))
 }
 
 function parseDocComment(value: string): Effect.Effect<DocComment, UsageError> {
@@ -224,6 +225,10 @@ function renderKind(source: string, kind: DiagramKind, options: RenderKindOption
         : renderSequenceDiagram(source, { compact: options.compact })
     case "state":
       return options.color ? renderStateDiagramAnsi(source) : renderStateDiagram(source)
+    case "er":
+      return options.color
+        ? renderErDiagramAnsi(source, { compact: options.compact, layoutMaxWidth: options.flowchartMaxWidth })
+        : renderErDiagram(source, { compact: options.compact, layoutMaxWidth: options.flowchartMaxWidth })
   }
 }
 

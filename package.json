@@ -72,6 +72,7 @@
     "validate": "bun run build && bun run publint && bun run attw",
     "examples": "bun examples/src/index.ts",
     "examples:flowchart": "bun examples/src/flowchart-demo.ts",
+    "examples:er": "bun examples/src/er-diagram-demo.ts",
     "examples:state": "bun examples/src/state-diagram-demo.ts",
     "examples:sequence": "bun examples/src/sequence-diagram-demo.ts",
     "examples:gallery": "bun run build && bun examples/src/gallery.ts"

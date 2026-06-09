@@ -34,8 +34,8 @@
           """
 ```
 
-Mermaid diagrams for the terminal — flowcharts, sequence diagrams, and state
-diagrams as plain text, ANSI-colored output, or a live
+Mermaid diagrams for the terminal — flowcharts, sequence diagrams, state
+diagrams, and entity-relationship diagrams as plain text, ANSI-colored output, or a live
 [OpenTUI](https://github.com/anomalyco/opentui) renderable.
 
 > Status: experimental. APIs may shift before `1.0`.
@@ -175,7 +175,7 @@ ESM only. The current library entrypoint requires Bun because it includes
 OpenTUI-backed renderables alongside plain and ANSI rendering helpers.
 
 `render` takes any Mermaid string — the leading `flowchart`/`sequenceDiagram`/
-`stateDiagram-v2` line picks the right renderer for you.
+`stateDiagram-v2`/`erDiagram` line picks the right renderer for you.
 
 ```ts
 import { render } from "@kitlangton/merman"
@@ -200,6 +200,12 @@ console.log(
   render(`stateDiagram-v2
   [*] --> Editing
   Editing --> Submitted: submit`),
+)
+
+console.log(
+  render(`erDiagram
+  CUSTOMER ||--o{ ORDER : places
+  ORDER ||--|{ LINE_ITEM : contains`),
 )
 
 // Plain text (no escapes) — handy for snapshots and pipes.
@@ -235,6 +241,9 @@ switch (parsed.kind) {
   case "state":
     parsed.diagram.states.forEach(/* ... */)
     break
+  case "er":
+    parsed.diagram.entities.forEach(/* ... */)
+    break
 }
 ```
 
@@ -249,6 +258,7 @@ it). `--kind` in the CLI can be used when the header is omitted.
 | Flowchart | `flowchart` / `graph` with `TB`, `TD`, `BT`, `LR`, or `RL`; boxed, rounded, database, subroutine, and decision nodes; `-->`, `==>`, `-.->` edges with pipe or inline labels; nested `subgraph` / `end`; `direction` inside subgraphs; accepted but ignored `classDef`, `class`, `style`, and `linkStyle` presentation directives |
 | Sequence  | `sequenceDiagram`; `participant` / `actor`; messages using `->>`, `-->>`, `->`, `-->`, `-x`, `--x`, `-)`, or `--)` with activation shorthand; `activate` / `deactivate`; `Note over`; `autonumber`; `box`, `alt` / `else`, and `loop` blocks closed by `end`                                                                     |
 | State     | `stateDiagram` / `stateDiagram-v2`; `direction` with `TB`, `TD`, `LR`, or `RL`; `A --> B: label` transitions and `[*]` markers; quoted aliases (`state "Label" as Id`); choice states; composite states; inline or multiline left/right notes                                                                                    |
+| ER        | `erDiagram`; `direction` with `TB`, `TD`, `BT`, `LR`, or `RL`; entity declarations, aliases, attribute blocks with optional `PK` / `FK` / `UK` keys and comments; symbolic crow's-foot relationships plus Mermaid's cardinality and identifying aliases; accepted but ignored `classDef`, `class`, and `style` directives        |
 
 Unsupported structural statements are rejected rather than silently omitted
 from the render. Flowchart `classDef`, `class`, `style`, and `linkStyle`

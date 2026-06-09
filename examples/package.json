@@ -5,9 +5,11 @@
   "scripts": {
     "start": "bun src/index.ts",
     "flowchart": "bun src/flowchart-demo.ts",
+    "er": "bun src/er-diagram-demo.ts",
     "state": "bun src/state-diagram-demo.ts",
     "sequence": "bun src/sequence-diagram-demo.ts",
     "print:flowchart": "bun src/flowchart-demo.ts --print --plain",
+    "print:er": "bun src/er-diagram-demo.ts --print --plain",
     "print:state": "bun src/state-diagram-demo.ts --print --plain",
     "print:sequence": "bun src/sequence-diagram-demo.ts --print --plain",
     "print:gallery": "bun src/gallery.ts"

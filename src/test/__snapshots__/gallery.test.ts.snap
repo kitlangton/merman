@@ -375,3 +375,42 @@ exports[`rendering gallery State / independent overlapping feedback paths 1`] = 
  │              reset A               │
  ╰────────────────────────────────────╯"
 `;
+
+exports[`rendering gallery ER / checkout relationships 1`] = `
+"╭─────────────────╮
+│    CUSTOMER     │                                               ╭───────────╮
+│    ────────     │                               ╭── contains ─o{│ LINE_ITEM │
+│  string id PK   ├||─ places ───╮                │          │    ╰───────────╯
+│ string email UK │              │                │          │
+╰─────────────────╯              │    ╭───────╮   │          │
+                                 ╰──||│ ORDER ├||─┤          │
+                                      ╰───────╯   │          │
+                                                  │          │
+                                                  │          │     ╭─────────╮
+                                                  ╰─── paid_by ──|{│ PAYMENT │
+    ╭─────────╮                                              │     ╰─────────╯
+    │ PRODUCT ├||─────────────── appears_in ─────────────────╯
+    ╰─────────╯"
+`;
+
+exports[`rendering gallery ER / memberships and teams 1`] = `
+"                                     ╭────────────╮
+╭─────────────────╮  ╭┬─ includes ─o{│ MEMBERSHIP │
+│      USER       │  ││              ╰────────────╯
+│    ────────     │  ││
+│  string id PK   ├||┼┤
+│ string email UK │  ││
+╰─────────────────╯  ││
+                     ││
+                     ││               ╭─────────╮
+                     │╰──── owns ───o{│ PROJECT │
+                     │                ╰─────────╯
+                     │
+╭────────────────╮   │
+│      TEAM      │   │
+│    ────────    │   │
+│  string id PK  ├||─┤
+│ string slug UK │   │                 ╭────────╮
+╰────────────────╯   ╰──── sends ────o{│ INVITE │
+                                       ╰────────╯"
+`;

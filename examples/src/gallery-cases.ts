@@ -1,4 +1,4 @@
-export type GalleryDiagramKind = "flowchart" | "sequence" | "state"
+export type GalleryDiagramKind = "flowchart" | "sequence" | "state" | "er"
 
 export interface GalleryCase {
   title: string
@@ -7,6 +7,38 @@ export interface GalleryCase {
 }
 
 export const GALLERY_CASES: readonly GalleryCase[] = [
+  {
+    title: "ER / checkout relationships",
+    kind: "er",
+    content: `erDiagram
+  direction LR
+  CUSTOMER ||--o{ ORDER : places
+  ORDER ||--|{ LINE_ITEM : contains
+  ORDER ||--|| PAYMENT : paid_by
+  PRODUCT ||--o{ LINE_ITEM : appears_in
+  CUSTOMER {
+    string id PK
+    string email UK
+  }`,
+  },
+  {
+    title: "ER / memberships and teams",
+    kind: "er",
+    content: `erDiagram
+  direction LR
+  USER ||--o{ MEMBERSHIP : joins
+  TEAM ||--o{ MEMBERSHIP : includes
+  USER ||--o{ PROJECT : owns
+  TEAM ||--o{ INVITE : sends
+  USER {
+    string id PK
+    string email UK
+  }
+  TEAM {
+    string id PK
+    string slug UK
+  }`,
+  },
   {
     title: "Flowchart / Unicode and crossings",
     kind: "flowchart",

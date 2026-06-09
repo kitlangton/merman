@@ -11,6 +11,7 @@ import {
   TextRenderable,
 } from "@opentui/core"
 import * as flowchartDemo from "./flowchart-demo.js"
+import * as erDemo from "./er-diagram-demo.js"
 import * as sequenceDemo from "./sequence-diagram-demo.js"
 import * as stateDemo from "./state-diagram-demo.js"
 
@@ -36,6 +37,13 @@ const DEMOS: SubDemo[] = [
     description: "Composite states, transitions, and follow animation",
     run: stateDemo.run,
     destroy: stateDemo.destroy,
+  },
+  {
+    id: "er",
+    title: "ER Diagram",
+    description: "Mermaid erDiagram entities, attributes, and inline cardinalities",
+    run: erDemo.run,
+    destroy: erDemo.destroy,
   },
   {
     id: "sequence",

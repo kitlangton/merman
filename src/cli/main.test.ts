@@ -214,6 +214,16 @@ export function commit() {}
     expect(result.stdout).toContain(" B ")
   })
 
+  test("renders ER diagrams from stdin", async () => {
+    const result = await runCli(["--no-color"], "erDiagram\n  CUSTOMER ||--o{ ORDER : places")
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stderr).toBe("")
+    expect(result.stdout).toContain("CUSTOMER")
+    expect(result.stdout).toContain("ORDER")
+    expect(result.stdout).toContain("places")
+  })
+
   test("reports unsupported source without rendering output", async () => {
     const result = await runCli(["--no-color", "not a diagram"])
 

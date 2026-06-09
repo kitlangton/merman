@@ -6,12 +6,14 @@ described here.
 
 ## What this package is
 
-`merman` parses a small Mermaid-flavored DSL and renders three
+`merman` parses a small Mermaid-flavored DSL and renders four
 diagram families to the terminal:
 
 - **Flowchart** — boxed nodes, routed edges, subgraphs, animated pulses
 - **State** — composite states, nested regions, active-transition highlighting
 - **Sequence** — participants, messages, notes, fragments, activations
+- **ER** — entities, attributes, and crow's-foot relationships rendered via the
+  flowchart pipeline
 
 Each family has three rendering paths:
 
@@ -27,7 +29,7 @@ the diagram-specific rendering pipeline.
 
 ```
 src/
-├── index.ts             # Single public entrypoint (re-exports flowchart/state/sequence)
+├── index.ts             # Single public entrypoint (re-exports diagram families)
 ├── cli/                 # Bun CLI output and source-comment transforms
 │   ├── main.ts          #   Args, diagram dispatch, terminal/doc-comment output
 │   ├── doc-comment.ts   #   TypeScript /** ... */ formatting
@@ -67,6 +69,13 @@ src/
 │   ├── renderable.ts    #   SequenceDiagramRenderable (OpenTUI)
 │   ├── options.ts       #   Defaults and option normalization
 │   ├── types.ts         #   Public data model and options
+│   └── index.ts         #   Public re-exports for this family
+├── er/                  # Entity-relationship diagrams
+│   ├── parser.ts        #   Mermaid string -> ErDiagram
+│   ├── adapter.ts       #   ErDiagram -> FlowchartDiagram
+│   ├── render.ts        #   Plain/ANSI rendering facade
+│   ├── renderable.ts    #   ErDiagramRenderable (OpenTUI)
+│   ├── types.ts         #   Public data model and option aliases
 │   └── index.ts         #   Public re-exports for this family
 ├── core/                # Package-internal primitives, NOT publicly exported
 │   ├── canvas.ts        #   DiagramCanvas: 2D char grid abstraction

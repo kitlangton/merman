@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { Flowchart, Sequence, State, detect, isMermaid, parse, render } from "../index.js"
+import { Er, Flowchart, Sequence, State, detect, isMermaid, parse, render } from "../index.js"
 
 describe("package integrity", () => {
   test("does not retain old extracted source folders", async () => {
@@ -16,7 +16,13 @@ describe("package integrity", () => {
   })
 
   test("keeps core package-internal", async () => {
-    const publicEntrypoints = ["src/index.ts", "src/flowchart/index.ts", "src/state/index.ts", "src/sequence/index.ts"]
+    const publicEntrypoints = [
+      "src/index.ts",
+      "src/flowchart/index.ts",
+      "src/state/index.ts",
+      "src/sequence/index.ts",
+      "src/er/index.ts",
+    ]
 
     for (const entrypoint of publicEntrypoints) {
       const source = await Bun.file(entrypoint).text()
@@ -30,7 +36,7 @@ describe("package integrity", () => {
     expect(typeof isMermaid).toBe("function")
     expect(typeof detect).toBe("function")
 
-    for (const ns of [Flowchart, Sequence, State]) {
+    for (const ns of [Flowchart, Sequence, State, Er]) {
       expect(typeof ns.render).toBe("function")
       expect(typeof ns.parse).toBe("function")
       expect(typeof ns.is).toBe("function")
@@ -42,15 +48,16 @@ describe("package integrity", () => {
     expect(detect("flowchart LR\n  A --> B")).toBe("flowchart")
     expect(detect("sequenceDiagram\n  Alice->>Bob: hi")).toBe("sequence")
     expect(detect("stateDiagram-v2\n  [*] --> Idle")).toBe("state")
+    expect(detect("erDiagram\n  CUSTOMER ||--o{ ORDER : places")).toBe("er")
     expect(detect("not a diagram")).toBeUndefined()
     expect(isMermaid("flowchart LR\n  A --> B")).toBe(true)
     expect(isMermaid("not a diagram")).toBe(false)
   })
 
   test("top-level parse returns kind-tagged family diagrams", () => {
-    const parsed = parse("flowchart LR\n  A --> B")
+    const parsed = parse("erDiagram\n  CUSTOMER ||--o{ ORDER : places")
 
-    expect(parsed.kind).toBe("flowchart")
-    if (parsed.kind === "flowchart") expect(parsed.diagram.nodes.map((node) => node.id)).toEqual(["A", "B"])
+    expect(parsed.kind).toBe("er")
+    if (parsed.kind === "er") expect(parsed.diagram.entities.map((entity) => entity.id)).toEqual(["CUSTOMER", "ORDER"])
   })
 })
