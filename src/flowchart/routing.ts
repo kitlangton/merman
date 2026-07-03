@@ -190,11 +190,13 @@ function sourceFanOutLane(
   axis: DiagramAxis,
   travel: DiagramDirection,
 ): number {
-  return keepBefore(
+  const sourceCoordinate = coordinate(sourcePort, axis)
+  const unclamped = keepBefore(
     advanceCoordinate(coordinate(sourcePort, axis), travel, BUS_CLEARANCE),
     beforeNearestCoordinate(targetPorts, axis, travel, NODE_CLEARANCE),
     travel,
   )
+  return keepAfter(unclamped, sourceCoordinate, travel)
 }
 
 function targetFanInLane(
@@ -203,11 +205,13 @@ function targetFanInLane(
   axis: DiagramAxis,
   travel: DiagramDirection,
 ): number {
-  return keepAfter(
+  const targetCoordinate = coordinate(targetPort, axis)
+  const unclamped = keepAfter(
     advanceCoordinate(coordinate(targetPort, axis), travel, -BUS_CLEARANCE),
     afterFarthestCoordinate(sourcePorts, axis, travel, NODE_CLEARANCE),
     travel,
   )
+  return keepBefore(unclamped, targetCoordinate, travel)
 }
 
 function portForTravel(bounds: FlowchartNodeBounds, travel: DiagramDirection, role: PortRole): FlowchartPoint {

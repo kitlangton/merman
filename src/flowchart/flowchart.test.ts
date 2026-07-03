@@ -97,6 +97,75 @@ describe("FlowchartDiagram", () => {
     `)
   })
 
+  test("routes compact vertical sibling subtrees from their true parents", () => {
+    const output = renderFlowchartDiagram(
+      `flowchart TD
+  D[DEPLOYMENT - Anomaly] --> CA[ClientApps: google, github]
+  D --> O[ORG acme = guild/workspace]
+  O --> OG[org grant: google, authed as bot@acme.com]
+  O --> M[MEMBER juliana]
+  M --> UG[user grant: google, personal]`,
+      { compact: true },
+    )
+
+    expectDiagram(output).toEqualDiagram(`
+                               ╭──────────────────────╮
+                               │ DEPLOYMENT - Anomaly │
+                               ╰───────────┬──────────╯
+                      ╭────────────────────╰────────────────────╮
+                      ▼                                         ▼
+       ╭────────────────────────────╮            ╭────────────────────────────╮
+       │ ClientApps: google, github │            │ ORG acme = guild/workspace │
+       ╰────────────────────────────╯            ╰──────────────┬─────────────╯
+                            ╭───────────────────────────────────╰───────╮
+                            ▼                                           ▼
+      ╭───────────────────────────────────────────╮            ╭────────────────╮
+      │ org grant: google, authed as bot@acme.com │            │ MEMBER juliana │
+      ╰───────────────────────────────────────────╯            ╰────────┬───────╯
+                                           ╭────────────────────────────╯
+                                           ▼
+                           ╭──────────────────────────────╮
+                           │ user grant: google, personal │
+                           ╰──────────────────────────────╯
+    `)
+  })
+
+  test("routes vertical sibling subtrees from their true parents", () => {
+    const output = renderFlowchartDiagram(`flowchart TD
+  D[DEPLOYMENT - Anomaly] --> CA[ClientApps: google, github]
+  D --> O[ORG acme = guild/workspace]
+  O --> OG[org grant: google, authed as bot@acme.com]
+  O --> M[MEMBER juliana]
+  M --> UG[user grant: google, personal]`)
+
+    expectDiagram(output).toEqualDiagram(`
+                               ╭──────────────────────╮
+                               │ DEPLOYMENT - Anomaly │
+                               ╰───────────┬──────────╯
+                                           │
+                      ╭────────────────────┴────────────────────╮
+                      │                                         │
+                      ▼                                         ▼
+       ╭────────────────────────────╮            ╭────────────────────────────╮
+       │ ClientApps: google, github │            │ ORG acme = guild/workspace │
+       ╰────────────────────────────╯            ╰──────────────┬─────────────╯
+                                                                │
+                            ╭───────────────────────────────────┴───────╮
+                            │                                           │
+                            ▼                                           ▼
+      ╭───────────────────────────────────────────╮            ╭────────────────╮
+      │ org grant: google, authed as bot@acme.com │            │ MEMBER juliana │
+      ╰───────────────────────────────────────────╯            ╰────────┬───────╯
+                                                                        │
+                                           ╭────────────────────────────╯
+                                           │
+                                           ▼
+                           ╭──────────────────────────────╮
+                           │ user grant: google, personal │
+                           ╰──────────────────────────────╯
+    `)
+  })
+
   test("keeps Unicode node labels inside their measured frame", () => {
     const output = renderFlowchartDiagram(`flowchart LR
   A[界]`)
