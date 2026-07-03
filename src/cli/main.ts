@@ -7,7 +7,7 @@ import { detect, UnknownDiagramError, type DiagramKind } from "../index.js"
 import { renderSequenceDiagram, renderSequenceDiagramAnsi } from "../sequence/diagram.js"
 import { renderStateDiagram, renderStateDiagramAnsi } from "../state/diagram.js"
 import { formatTypeScriptDocComment } from "./doc-comment.js"
-import { replaceTypeScriptMermaidFences } from "./replace.js"
+import { replaceMermaidFences } from "./replace.js"
 
 type DocComment = "ts"
 
@@ -39,7 +39,7 @@ Usage:
   merman [content]
   merman --file <path>
   merman --kind <flowchart|sequence|state> --file <path>
-  merman --replace <typescript-file>
+  merman --replace <path>
 
 Options:
   -f, --file <path>   Read the diagram from a file
@@ -47,7 +47,7 @@ Options:
       --no-color      Emit plain text instead of ANSI color escapes
       --compact       Use compact diagram rendering where available
       --doc-comment=ts  Wrap output in a TypeScript doc-comment block
-      --replace <path>  Replace inline Mermaid doc-comment fences in a file
+      --replace <path>  Replace Mermaid fences in a Markdown or TypeScript file
   -h, --help          Show help
   -v, --version       Show version
 
@@ -77,7 +77,7 @@ const program = Effect.fnUntraced(function* (argv: ReadonlyArray<string>) {
       return yield* Effect.fail(new UsageError("--replace can only be combined with --compact."))
     }
     const count = yield* Effect.promise(() =>
-      replaceTypeScriptMermaidFences(options.replace!, (source) => renderReplacementSource(source, options.compact)),
+      replaceMermaidFences(options.replace!, (source) => renderReplacementSource(source, options.compact)),
     )
     yield* Console.log(`Replaced ${count} Mermaid ${count === 1 ? "block" : "blocks"} in ${options.replace}.`)
     return

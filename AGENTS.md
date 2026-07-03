@@ -31,7 +31,7 @@ src/
 ├── cli/                 # Bun CLI output and source-comment transforms
 │   ├── main.ts          #   Args, diagram dispatch, terminal/doc-comment output
 │   ├── doc-comment.ts   #   TypeScript /** ... */ formatting
-│   └── replace.ts       #   Inline Mermaid fences -> rendered TS comment lines
+│   └── replace.ts       #   Inline Mermaid fences -> rendered TS or Markdown lines
 ├── flowchart/           # Flowchart pipeline
 │   ├── parser.ts        #   Mermaid string -> FlowchartDiagram
 │   ├── layout.ts        #   FlowchartDiagram -> placed bounds/routes
@@ -131,13 +131,17 @@ merman --compact --doc-comment=ts $'sequenceDiagram\n  Worker->>Store: commit(pl
 
 # One-shot replacement of Mermaid fences inside TS doc-comments
 merman --compact --replace src/example.ts
+
+# One-shot replacement of ordinary Mermaid fences inside Markdown
+merman --compact --replace docs/example.md
 ```
 
 `--compact` shortens Flowchart routes and renders Sequence diagrams with bare
 participant names plus fitting inline message labels. State diagrams currently
-retain their normal layout. `--replace` consumes only Mermaid fences inside
-`/** ... */` comments, mutates the whole requested file in place, and leaves no
-markers; inspect the resulting diff.
+retain their normal layout. `--replace` consumes Mermaid fences inside
+`/** ... */` comments for TypeScript or ordinary fenced Mermaid blocks for
+Markdown, mutates the whole requested file in place, and leaves no markers;
+inspect the resulting diff.
 
 After editing the public surface, **rebuild** (`bun run build`) — the
 examples workspace consumes `dist/` via the `exports` field.

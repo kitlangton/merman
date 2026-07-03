@@ -187,6 +187,75 @@ export function commit() {}
     }
   })
 
+  test("replaces every inline Mermaid fence in a Markdown file", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "merman-cli-"))
+    const target = join(directory, "example.md")
+    const firstSource = "sequenceDiagram\n  Client->>Server: request"
+    const secondSource = "sequenceDiagram\n  Worker->>Store: commit"
+    await writeFile(
+      target,
+      `# Example
+
+\`\`\`mermaid
+${firstSource}
+\`\`\`
+
+  \`\`\`mermaid
+  sequenceDiagram
+    Worker->>Store: commit
+  \`\`\`
+`,
+    )
+
+    try {
+      const result = await runCli(["--compact", "--replace", target])
+      const updated = await readFile(target, "utf8")
+
+      expect(result).toEqual({ stdout: `Replaced 2 Mermaid blocks in ${target}.\n`, stderr: "", exitCode: 0 })
+      expect(updated).toBe(`# Example
+
+\`\`\`text
+${renderSequenceDiagram(firstSource, { compact: true })}
+\`\`\`
+
+  \`\`\`text
+${renderSequenceDiagram(secondSource, { compact: true })
+  .split("\n")
+  .map((line) => `  ${line}`)
+  .join("\n")}
+  \`\`\`
+`)
+      expect(updated).not.toContain("\u001b[")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  test("does not partially replace a Markdown file when an inline diagram cannot render", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "merman-cli-"))
+    const target = join(directory, "example.md")
+    const original = `\`\`\`mermaid
+sequenceDiagram
+  A->>B: valid
+\`\`\`
+
+\`\`\`mermaid
+not a diagram
+\`\`\`
+`
+    await writeFile(target, original)
+
+    try {
+      const result = await runCli(["--replace", target])
+
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toBe("")
+      expect(await readFile(target, "utf8")).toBe(original)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
   test("folds horizontal flowcharts that exceed the redirected output width", async () => {
     const result = await runCli(
       ["--no-color"],

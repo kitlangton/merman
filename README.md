@@ -108,8 +108,10 @@ merman --compact --replace src/commit.ts
 ```
 
 `--replace` consumes the Mermaid fences and writes aligned diagram lines into
-their existing doc-comments. It always uses deterministic plain-text rendering,
-so generated source files never contain ANSI escapes. `--compact` is optional.
+their existing doc-comments. For Markdown files, it consumes ordinary Mermaid
+fences and writes rendered `text` fences in place. It always uses deterministic
+plain-text rendering, so generated source files never contain ANSI escapes.
+`--compact` is optional.
 For flowcharts it shortens routes while retaining node shapes. For sequence
 diagrams it removes participant boxes and places single-line message labels
 inside arrows while retaining a spacer row between messages.

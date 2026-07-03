@@ -1,8 +1,16 @@
 import { readFile, writeFile } from "node:fs/promises"
+import { extname } from "node:path"
 import { formatTypeScriptDocCommentBody } from "./doc-comment.js"
 
 const DOC_COMMENT_PATTERN = /\/\*\*[\s\S]*?\*\//g
-const MERMAID_FENCE_PATTERN = /^([ \t]*)\*[ \t]?```mermaid[ \t]*(\r?\n)([\s\S]*?)^\1\*[ \t]?```[ \t]*$/gm
+const TYPESCRIPT_MERMAID_FENCE_PATTERN = /^([ \t]*)\*[ \t]?```mermaid[ \t]*(\r?\n)([\s\S]*?)^\1\*[ \t]?```[ \t]*$/gm
+const MARKDOWN_MERMAID_FENCE_PATTERN = /^([ \t]*)```mermaid[ \t]*(\r?\n)([\s\S]*?)^\1```[ \t]*$/gm
+
+export async function replaceMermaidFences(path: string, render: (source: string) => string): Promise<number> {
+  return [".md", ".mdx"].includes(extname(path))
+    ? replaceMarkdownMermaidFences(path, render)
+    : replaceTypeScriptMermaidFences(path, render)
+}
 
 export async function replaceTypeScriptMermaidFences(
   path: string,
@@ -11,7 +19,7 @@ export async function replaceTypeScriptMermaidFences(
   const content = await readFile(path, "utf8")
   let count = 0
   const updated = content.replace(DOC_COMMENT_PATTERN, (comment) =>
-    comment.replace(MERMAID_FENCE_PATTERN, (_, indentation: string, newline: string, body: string) => {
+    comment.replace(TYPESCRIPT_MERMAID_FENCE_PATTERN, (_, indentation: string, newline: string, body: string) => {
       const source = (body.endsWith(newline) ? body.slice(0, -newline.length) : body)
         .split(newline)
         .map((line) => {
@@ -26,6 +34,29 @@ export async function replaceTypeScriptMermaidFences(
   )
 
   if (count === 0) throw new Error(`No Mermaid doc-comment fences found in ${path}.`)
+  if (updated !== content) await writeFile(path, updated, "utf8")
+  return count
+}
+
+export async function replaceMarkdownMermaidFences(path: string, render: (source: string) => string): Promise<number> {
+  const content = await readFile(path, "utf8")
+  let count = 0
+  const updated = content.replace(
+    MARKDOWN_MERMAID_FENCE_PATTERN,
+    (_, indentation: string, newline: string, body: string) => {
+      const source = body.endsWith(newline) ? body.slice(0, -newline.length) : body
+      count += 1
+      return [
+        `${indentation}\`\`\`text`,
+        ...render(source)
+          .split("\n")
+          .map((line) => `${indentation}${line}`),
+        `${indentation}\`\`\``,
+      ].join(newline)
+    },
+  )
+
+  if (count === 0) throw new Error(`No Mermaid fences found in ${path}.`)
   if (updated !== content) await writeFile(path, updated, "utf8")
   return count
 }
