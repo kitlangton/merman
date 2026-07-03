@@ -1,6 +1,6 @@
 {
   "name": "@kitlangton/merman",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Mermaid-flavored flowchart, sequence, and state diagrams for OpenTUI terminals.",
   "keywords": [
     "ansi",

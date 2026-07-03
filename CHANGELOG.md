@@ -1,5 +1,12 @@
 # @kitlangton/merman
 
+## 0.2.2
+
+### Patch Changes
+
+- bb59296: Support replacing fenced Mermaid diagrams in Markdown files with rendered text fences through `merman --replace`.
+- 92ed4d0: Fix compact flowchart routing for vertical sibling subtrees so fan-out edges stay attached to their true parent instead of wrapping around nearby nodes.
+
 ## 0.2.1
 
 ### Patch Changes
