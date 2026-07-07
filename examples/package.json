@@ -14,6 +14,6 @@
   },
   "dependencies": {
     "@kitlangton/merman": "file:..",
-    "@opentui/core": "0.2.2"
+    "@opentui/core": "^0.4.3"
   }
 }

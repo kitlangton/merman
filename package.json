@@ -83,7 +83,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
     "@changesets/cli": "^2.31.0",
-    "@opentui/core": "0.2.2",
+    "@opentui/core": "^0.4.3",
     "@types/bun": "latest",
     "oxfmt": "^0.48.0",
     "oxlint": "^1.63.0",
@@ -92,7 +92,7 @@
     "typescript": "^5"
   },
   "peerDependencies": {
-    "@opentui/core": "^0.2.2"
+    "@opentui/core": "^0.4.3"
   },
   "overrides": {
     "unrun": "0.2.37"

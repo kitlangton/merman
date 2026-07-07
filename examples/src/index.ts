@@ -156,7 +156,7 @@ function buildMenu(renderer: CliRenderer): Menu {
 
 function destroyMenu(renderer: CliRenderer): void {
   if (!menu) return
-  renderer.root.remove(menu.container.id)
+  renderer.root.remove(menu.container)
   menu.container.destroyRecursively()
   menu = undefined
 }

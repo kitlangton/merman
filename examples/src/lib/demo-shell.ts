@@ -134,7 +134,7 @@ export class DemoShell {
 
   mount(content: MountedContent): void {
     if (this.mounted) {
-      this.scrollBox.remove(this.mounted.renderable.id)
+      this.scrollBox.remove(this.mounted.renderable)
     }
     this.mounted = content
     this.scrollBox.add(content.renderable)

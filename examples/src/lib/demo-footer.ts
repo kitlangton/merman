@@ -89,7 +89,7 @@ export class DemoFooter {
 
   destroy(): void {
     this.renderer.off("resize", this.resizeHandler)
-    this.renderer.root.remove(this.box.id)
+    this.renderer.root.remove(this.box)
     this.box.destroyRecursively()
   }
 }
